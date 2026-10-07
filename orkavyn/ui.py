@@ -29,7 +29,7 @@ CSS = f"""
 #MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stDecoration"],
 [data-testid="stStatusWidget"] {{ display: none !important; visibility: hidden; }}
 
-html, body, .stApp, [class*="css"] {{
+html, body, .stApp, .stApp * {{
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif;
 }}
 .stApp {{ background: {COR_FUNDO}; color: {COR_TEXTO}; }}
@@ -43,10 +43,11 @@ h1, h2, h3, h4, p, label, span, li {{ color: {COR_TEXTO}; }}
 .ok-titulo {{ font-size: 1.9rem; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; margin: .15rem 0 1.1rem 0; }}
 .ok-secao {{ font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; margin: 1.6rem 0 .6rem 0; }}
 
-/* Abas */
-.stTabs [data-baseweb="tab-list"] {{ gap: 6px; background: #EFEFEA; padding: 5px; border-radius: 16px; }}
-.stTabs [data-baseweb="tab"] {{ flex: 1; justify-content: center; height: 48px; border-radius: 12px; font-size: 1.02rem; font-weight: 600; color: {COR_TEXTO_SUAVE}; background: transparent; }}
-.stTabs [aria-selected="true"] {{ background: {COR_CARTAO}; color: {COR_TEXTO}; box-shadow: 0 1px 4px rgba(0,0,0,.08); }}
+/* Abas (seletores por papel ARIA: valem em versões novas e antigas do Streamlit) */
+.stTabs [role="tablist"] {{ gap: 6px; background: #EFEFEA; padding: 5px; border-radius: 16px; border: none; }}
+.stTabs [role="tab"] {{ flex: 1; justify-content: center; height: 48px; border-radius: 12px; font-size: 1.02rem; font-weight: 600; color: {COR_TEXTO_SUAVE}; background: transparent; }}
+.stTabs [role="tab"] p {{ font-weight: 600; font-size: 1.02rem; color: inherit; }}
+.stTabs [role="tab"][aria-selected="true"] {{ background: {COR_CARTAO}; color: {COR_TEXTO}; box-shadow: 0 1px 4px rgba(0,0,0,.08); }}
 .stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {{ display: none; }}
 
 /* Formulário e cartões */
@@ -62,15 +63,21 @@ h1, h2, h3, h4, p, label, span, li {{ color: {COR_TEXTO}; }}
 .ok-vazio {{ text-align: center; padding: 2.2rem 1rem; }}
 .ok-vazio h3 {{ margin: 0 0 .4rem 0; font-size: 1.3rem; }}
 
+.stTabs .react-aria-SelectionIndicator {{ display: none !important; }}
+[data-testid="stForm"] [data-testid="stElementContainer"], div:has(> [data-testid="stFormSubmitButton"]),
+[data-testid="stFormSubmitButton"], [data-testid="stFormSubmitButton"] > button {{ width: 100% !important; }}
+[data-baseweb="base-input"] input, [data-baseweb="input"] input, [data-baseweb="select"] div {{ font-size: 1.1rem !important; }}
+
 /* Campos grandes, alto contraste, fáceis de tocar */
-.stTextInput input, .stNumberInput input, .stDateInput input, .stTimeInput input, .stTextArea textarea,
-[data-baseweb="select"] > div {{
-  min-height: 3.2rem; font-size: 1.1rem !important; border-radius: 14px !important;
-  background: #fff !important; color: {COR_TEXTO} !important; border: 1.5px solid #CFCFC8 !important;
+[data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="textarea"], [data-baseweb="select"] > div {{
+  min-height: 3.2rem; border-radius: 14px !important; background: #fff !important;
+  border: 1.5px solid #CFCFC8 !important;
 }}
+.stTextInput input, .stNumberInput input, .stDateInput input, .stTimeInput input, .stTextArea textarea,
+[data-baseweb="select"] {{ font-size: 1.1rem !important; color: {COR_TEXTO} !important; background: transparent !important; }}
+[data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within {{ border-color: {COR_MARCA} !important; box-shadow: 0 0 0 3px {COR_MARCA}33 !important; }}
 .stTextArea textarea {{ min-height: 5.5rem; }}
-.stTextInput input:focus, .stNumberInput input:focus, .stTextArea textarea:focus {{ border-color: {COR_MARCA} !important; box-shadow: 0 0 0 3px {COR_MARCA}33 !important; }}
-.stNumberInput button {{ min-height: 3.2rem; }}
+.stNumberInput button {{ min-height: 3.2rem; background: transparent; }}
 
 /* Botões */
 .stButton > button, .stDownloadButton > button, [data-testid="stFormSubmitButton"] > button {{
@@ -88,6 +95,8 @@ h1, h2, h3, h4, p, label, span, li {{ color: {COR_TEXTO}; }}
 [data-testid="stDataFrame"] {{ border-radius: 14px; overflow: hidden; }}
 
 @media (max-width: 640px) {{
+  [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
+  [data-testid="stColumn"] {{ min-width: 100% !important; }}
   .ok-titulo {{ font-size: 1.55rem; }}
   .ok-kpi-valor {{ font-size: 1.8rem; }}
 }}
