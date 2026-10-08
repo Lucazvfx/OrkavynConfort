@@ -204,6 +204,23 @@ def filtrar(df: pd.DataFrame, inicio: date | None, fim: date | None,
     return df[m]
 
 
+def ultimos_por_lote(df: pd.DataFrame) -> pd.DataFrame:
+    """Só a observação mais recente de cada lote (o retrato "de agora")."""
+    if df.empty:
+        return df
+    return df.sort_values("data_hora").groupby("lote", as_index=False).tail(1)
+
+
+def lotes_para_agir(df: pd.DataFrame) -> pd.DataFrame:
+    """Lotes cuja observação mais recente exige atenção, do mais grave ao menos."""
+    ult = ultimos_por_lote(df)
+    if ult.empty:
+        return ult
+    ult = ult[ult["exige_atencao"]].copy()
+    ult["_peso"] = ult["nivel"].map({"critico": 2, "atencao": 1, "ok": 0})
+    return ult.sort_values(["_peso", "data_hora"], ascending=[False, False]).drop(columns="_peso")
+
+
 def classificacao_predominante(g: pd.DataFrame) -> str:
     """Classificação mais frequente do grupo; empate resolvido pela mais grave."""
     contagem = g["classificacao"].value_counts()

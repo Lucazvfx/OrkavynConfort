@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import html
 import math
 import re
 from datetime import datetime, timedelta
+from functools import lru_cache
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -15,7 +17,8 @@ from .config import *  # noqa: F401,F403
 from .db import (apagar_exemplos, excluir_observacao,
                  inserir_observacao, inserir_varias)
 from .motor import (Diagnostico, classificar_itu, diagnosticar, filtrar,
-                    gerar_exemplos, resumo_por_pasto, validar_observacao)
+                    gerar_exemplos, lotes_para_agir, resumo_por_pasto,
+                    validar_observacao)
 
 
 # Streamlit novo (>= 1.50) usa width="stretch"; o antigo usa use_container_width.
@@ -30,78 +33,214 @@ CSS = f"""
 [data-testid="stStatusWidget"] {{ display: none !important; visibility: hidden; }}
 
 html, body, .stApp, .stApp * {{
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, "Segoe UI", Roboto, sans-serif;
 }}
-.stApp {{ background: {COR_FUNDO}; color: {COR_TEXTO}; }}
-.block-container {{ max-width: 860px; padding: 1.4rem 1rem 4rem 1rem; }}
+.stApp {{ background: radial-gradient(circle at 8% 0%, {COR_VERDE_SUAVE}b8, transparent 34%), {COR_FUNDO}; color: {COR_TEXTO}; }}
+.block-container {{ max-width: 920px; padding: 1.2rem 1rem 4rem 1rem; }}
 h1, h2, h3, h4, p, label, span, li {{ color: {COR_TEXTO}; }}
-[data-testid="stWidgetLabel"] p {{ font-size: 1rem; font-weight: 600; color: {COR_TEXTO}; }}
+[data-testid="stWidgetLabel"] p {{ font-size: .98rem; font-weight: 600; color: #51584F; }}
 [data-testid="stCaptionContainer"], small {{ color: {COR_TEXTO_SUAVE}; }}
 
-/* Cabeçalho da marca */
-.ok-marca {{ font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: {COR_MARCA}; margin: 0; }}
-.ok-titulo {{ font-size: 1.9rem; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; margin: .15rem 0 1.1rem 0; }}
-.ok-secao {{ font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; margin: 1.6rem 0 .6rem 0; }}
+/* Vidro: cartões translúcidos como no Orkavyn Fields */
+.ok-vidro, .ok-cartao, [data-testid="stForm"] {{
+  background: rgba(255,254,250,.78); border: 1px solid rgba(255,255,255,.8); border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(44,57,43,.09), 0 2px 8px rgba(62,44,28,.05);
+  backdrop-filter: blur(20px) saturate(125%); -webkit-backdrop-filter: blur(20px) saturate(125%);
+}}
+[data-testid="stForm"] {{ padding: 1.3rem 1.2rem; }}
+.ok-cartao {{ padding: 1.1rem 1.2rem; }}
 
-/* Abas (seletores por papel ARIA: valem em versões novas e antigas do Streamlit) */
-.stTabs [role="tablist"] {{ gap: 6px; background: #EFEFEA; padding: 5px; border-radius: 16px; border: none; }}
-.stTabs [role="tab"] {{ flex: 1; justify-content: center; height: 48px; border-radius: 12px; font-size: 1.02rem; font-weight: 600; color: {COR_TEXTO_SUAVE}; background: transparent; }}
-.stTabs [role="tab"] p {{ font-weight: 600; font-size: 1.02rem; color: inherit; }}
-.stTabs [role="tab"][aria-selected="true"] {{ background: {COR_CARTAO}; color: {COR_TEXTO}; box-shadow: 0 1px 4px rgba(0,0,0,.08); }}
-.stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] {{ display: none; }}
+/* Topo da marca */
+.ok-topo {{ display: flex; align-items: center; gap: 12px; padding: .2rem 0 1rem 0; }}
+.ok-topo img {{ width: 46px; height: 46px; border-radius: 12px; object-fit: cover; box-shadow: 0 4px 14px rgba(27,48,34,.18); }}
+.ok-topo strong {{ display: block; font-size: 15px; letter-spacing: -.01em; }}
+.ok-topo small {{ display: block; margin-top: 2px; color: {COR_TERRA}; font-size: 9.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }}
+.ok-eyebrow {{ margin: 0 0 8px 0; color: {COR_TEXTO_SUAVE}; font-size: 10.5px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }}
+.ok-secao {{ font-size: 1.45rem; font-weight: 700; letter-spacing: -.035em; line-height: 1.1; margin: 1.8rem 0 .5rem 0; }}
 
-/* Formulário e cartões */
-[data-testid="stForm"] {{ background: {COR_CARTAO}; border: none; border-radius: 20px; padding: 1.2rem 1.1rem; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 20px rgba(0,0,0,.04); }}
-.ok-cartao {{ background: {COR_CARTAO}; border-radius: 18px; padding: 1.1rem 1.2rem; box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 20px rgba(0,0,0,.04); }}
+/* Hero (faixa verde com foto da fazenda) */
+.ok-hero {{ display: grid; grid-template-columns: 1.15fr .85fr; overflow: hidden; border-radius: 16px; background: {COR_MARCA}; color: {COR_FUNDO}; box-shadow: 0 14px 34px rgba(62,44,28,.12); margin-bottom: 14px; min-height: 210px; }}
+.ok-hero-txt {{ padding: 1.7rem 1.6rem; display: flex; flex-direction: column; justify-content: center; }}
+.ok-hero-txt .ok-eyebrow {{ color: {COR_PALHA}; }}
+.ok-hero h1, .ok-hero h1 span {{ color: {COR_FUNDO}; font-size: clamp(1.7rem, 4vw, 2.5rem); font-weight: 700; letter-spacing: -.035em; line-height: 1.06; margin: 0 0 .6rem 0; padding: 0; }}
+.ok-hero p {{ color: {COR_VERDE_SUAVE}; margin: 0; max-width: 34ch; line-height: 1.45; }}
+.ok-hero-img {{ background-size: cover; background-position: center; min-height: 190px; }}
+.ok-pill {{ display: inline-block; margin-top: 1rem; padding: .35rem .8rem; border-radius: 999px; font-size: .8rem; font-weight: 700; background: rgba(255,254,250,.16); color: {COR_FUNDO}; border: 1px solid rgba(255,255,255,.28); align-self: flex-start; }}
+
+/* Abas: pílula verde escura no item ativo */
+.stTabs [role="tablist"] {{ gap: 6px; background: rgba(255,254,250,.7); padding: 5px; border-radius: 14px; border: 1px solid rgba(255,255,255,.8); box-shadow: 0 8px 24px rgba(44,57,43,.06); }}
+.stTabs [role="tab"] {{ flex: 1; justify-content: center; height: 46px; border-radius: 10px; font-size: 1rem; font-weight: 600; color: #51584F; background: transparent; }}
+.stTabs [role="tab"] p {{ font-weight: 600; font-size: 1rem; color: inherit; }}
+.stTabs [role="tab"][aria-selected="true"] {{ background: rgba(27,48,34,.94); color: {COR_FUNDO}; box-shadow: 0 6px 18px rgba(27,48,34,.18); }}
+.stTabs [role="tab"][aria-selected="true"] p {{ color: {COR_FUNDO}; }}
+.stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"], .stTabs .react-aria-SelectionIndicator {{ display: none !important; }}
+
+/* Indicadores */
 .ok-grade {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: .4rem 0 .6rem 0; }}
 .ok-kpi-rotulo {{ font-size: .82rem; color: {COR_TEXTO_SUAVE}; font-weight: 600; }}
-.ok-kpi-valor {{ font-size: 2.1rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin-top: .2rem; }}
-.ok-kpi-sub {{ font-size: .8rem; color: {COR_TEXTO_SUAVE}; margin-top: .15rem; }}
-.ok-chip {{ display: inline-block; padding: .22rem .7rem; border-radius: 999px; font-size: .82rem; font-weight: 700; color: #fff; }}
-.ok-itu {{ font-size: 2.8rem; font-weight: 700; letter-spacing: -.03em; line-height: 1; }}
+.ok-kpi-valor {{ font-size: 2.1rem; font-weight: 700; letter-spacing: -.04em; line-height: 1.15; margin-top: .2rem; font-variant-numeric: tabular-nums; }}
+.ok-kpi-sub {{ font-size: .8rem; color: {COR_TEXTO_SUAVE}; margin-top: .25rem; }}
+.ok-kpi-destaque {{ background: rgba(220,233,221,.78); }}
+.ok-chip {{ display: inline-block; padding: .22rem .7rem; border-radius: 999px; font-size: .78rem; font-weight: 700; letter-spacing: .02em; color: #fff; }}
+.ok-itu {{ font-size: 2.8rem; font-weight: 700; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }}
 .ok-acao {{ margin-top: .7rem; font-size: 1rem; line-height: 1.45; }}
 .ok-vazio {{ text-align: center; padding: 2.2rem 1rem; }}
 .ok-vazio h3 {{ margin: 0 0 .4rem 0; font-size: 1.3rem; }}
 
-.stTabs .react-aria-SelectionIndicator {{ display: none !important; }}
-[data-testid="stForm"] [data-testid="stElementContainer"], div:has(> [data-testid="stFormSubmitButton"]),
-[data-testid="stFormSubmitButton"], [data-testid="stFormSubmitButton"] > button {{ width: 100% !important; }}
-[data-baseweb="base-input"] input, [data-baseweb="input"] input, [data-baseweb="select"] div {{ font-size: 1.1rem !important; }}
+/* Cartões "O que fazer hoje" */
+.ok-aviso {{ display: flex; gap: 14px; align-items: flex-start; padding: 15px 18px; margin-bottom: 10px; border-radius: 14px; background: rgba(255,254,250,.8); border: 1px solid rgba(255,255,255,.8); box-shadow: 0 10px 26px rgba(44,57,43,.07); border-left: 4px solid {COR_VERDE_SUAVE}; }}
+.ok-aviso.atencao {{ border-left-color: {COR_ATENCAO}; }}
+.ok-aviso.critico {{ border-left-color: {COR_CRITICO}; }}
+.ok-aviso strong {{ display: block; font-size: 1rem; }}
+.ok-aviso .ok-quando {{ margin-left: auto; white-space: nowrap; color: {COR_TEXTO_SUAVE}; font-size: .78rem; font-weight: 600; }}
+.ok-aviso p {{ margin: 4px 0 0 0; color: #51584F; font-size: .92rem; line-height: 1.42; }}
+.ok-aviso .ok-chip {{ margin-top: 6px; }}
 
 /* Campos grandes, alto contraste, fáceis de tocar */
 [data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="textarea"], [data-baseweb="select"] > div {{
-  min-height: 3.2rem; border-radius: 14px !important; background: #fff !important;
-  border: 1.5px solid #CFCFC8 !important;
+  min-height: 3.2rem; border-radius: 12px !important; background: rgba(245,243,238,.85) !important;
+  border: 1px solid rgba(128,85,51,.22) !important;
 }}
 .stTextInput input, .stNumberInput input, .stDateInput input, .stTimeInput input, .stTextArea textarea,
 [data-baseweb="select"] {{ font-size: 1.1rem !important; color: {COR_TEXTO} !important; background: transparent !important; }}
-[data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within {{ border-color: {COR_MARCA} !important; box-shadow: 0 0 0 3px {COR_MARCA}33 !important; }}
+[data-baseweb="base-input"] input, [data-baseweb="input"] input, [data-baseweb="select"] div {{ font-size: 1.1rem !important; }}
+[data-baseweb="input"]:focus-within, [data-baseweb="textarea"]:focus-within {{ border-color: {COR_MARCA} !important; box-shadow: 0 0 0 3px rgba(27,48,34,.14) !important; }}
 .stTextArea textarea {{ min-height: 5.5rem; }}
 .stNumberInput button {{ min-height: 3.2rem; background: transparent; }}
 
 /* Botões */
 .stButton > button, .stDownloadButton > button, [data-testid="stFormSubmitButton"] > button {{
-  min-height: 3.5rem; width: 100%; border-radius: 14px; font-size: 1.08rem; font-weight: 700;
-  border: 1.5px solid #CFCFC8; background: #fff; color: {COR_TEXTO};
+  min-height: 3.5rem; width: 100%; border-radius: 12px; font-size: 1.05rem; font-weight: 700; letter-spacing: .01em;
+  border: 1px solid rgba(255,255,255,.8); background: rgba(255,254,250,.7); color: {COR_MARCA};
+  box-shadow: 0 5px 16px rgba(44,57,43,.07);
 }}
 .stButton > button[kind="primary"], [data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"],
 .stDownloadButton > button[kind="primary"] {{
-  background: {COR_MARCA}; border-color: {COR_MARCA}; color: #fff;
+  background: {COR_MARCA}; border-color: {COR_MARCA}; color: {COR_FUNDO}; box-shadow: 0 8px 20px rgba(27,48,34,.18);
 }}
 .stButton > button[kind="primary"]:hover, [data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"]:hover {{ background: {COR_MARCA_ESCURA}; border-color: {COR_MARCA_ESCURA}; color: #fff; }}
-.stButton > button[kind="primary"] p, [data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"] p {{ color: #fff; }}
+.stButton > button[kind="primary"] p, [data-testid="stFormSubmitButton"] > button[kind="primaryFormSubmit"] p {{ color: {COR_FUNDO}; }}
+.stButton > button p, [data-testid="stFormSubmitButton"] > button p {{ color: inherit; }}
+[data-testid="stForm"] [data-testid="stElementContainer"], div:has(> [data-testid="stFormSubmitButton"]),
+[data-testid="stFormSubmitButton"], [data-testid="stFormSubmitButton"] > button {{ width: 100% !important; }}
 
 [data-testid="stAlert"] {{ border-radius: 14px; }}
 [data-testid="stDataFrame"] {{ border-radius: 14px; overflow: hidden; }}
+[data-testid="stExpander"] {{ border-radius: 14px; border-color: rgba(128,85,51,.16); background: rgba(255,254,250,.6); }}
 
 @media (max-width: 640px) {{
   [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
   [data-testid="stColumn"] {{ min-width: 100% !important; }}
-  .ok-titulo {{ font-size: 1.55rem; }}
+  .ok-hero {{ grid-template-columns: 1fr; }}
+  .ok-hero-img {{ order: -1; min-height: 130px; }}
+  .ok-hero-txt {{ padding: 1.3rem 1.2rem; }}
   .ok-kpi-valor {{ font-size: 1.8rem; }}
+  .ok-aviso {{ flex-wrap: wrap; }}
+  .ok-aviso .ok-quando {{ margin-left: 0; }}
 }}
 </style>
 """
+
+
+@lru_cache(maxsize=None)
+def imagem_uri(nome: str, mime: str) -> str:
+    """Imagem da pasta assets/ embutida na página (data URI), com cache."""
+    try:
+        dados = (ASSETS_DIR / nome).read_bytes()
+    except OSError:
+        return ""
+    return f"data:{mime};base64,{base64.b64encode(dados).decode()}"
+
+
+def topo_marca() -> None:
+    st.markdown(
+        f'<div class="ok-topo"><img src="{imagem_uri("logo.png", "image/png")}" alt="">'
+        f'<div><strong>{APP_NOME}</strong><small>Conforto do rebanho · Vilhena-RO</small></div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def tempo_atras(quando: datetime) -> str:
+    seg = (datetime.now(FUSO).replace(tzinfo=None) - quando.to_pydatetime()).total_seconds()
+    if seg < 3600:
+        return "agora há pouco"
+    if seg < 86400:
+        return f"há {int(seg // 3600)} h"
+    return f"há {int(seg // 86400)} dia(s)"
+
+
+def hero_painel(df: pd.DataFrame) -> None:
+    """Faixa verde do topo do painel: pergunta central + retrato de agora."""
+    if df.empty:
+        pilula = "Sem registros ainda"
+    else:
+        n = len(lotes_para_agir(df))
+        pilula = (f"{n} lote(s) pedem atenção agora" if n else "Nenhum lote em alerta agora")
+    foto = imagem_uri("hero.jpg", "image/jpeg")
+    st.markdown(
+        f"""<div class="ok-hero">
+          <div class="ok-hero-txt">
+            <p class="ok-eyebrow">Fisiologia e conforto</p>
+            <h1>Calor ou doença?</h1>
+            <p>Cruzamos o clima com o que os trabalhadores veem no pasto para saber o que fazer primeiro.</p>
+            <span class="ok-pill">{html.escape(pilula)}</span>
+          </div>
+          <div class="ok-hero-img" style="background-image:url({foto})"></div>
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def avisos_hoje(f: pd.DataFrame) -> None:
+    """Cartões "O que fazer hoje": um por lote, a partir da observação mais recente."""
+    st.markdown('<p class="ok-eyebrow" style="margin-top:1.6rem">Prioridades</p>'
+                '<div class="ok-secao" style="margin-top:0">O que fazer hoje</div>', unsafe_allow_html=True)
+    ag = lotes_para_agir(f)
+    if ag.empty:
+        st.markdown('<div class="ok-aviso"><div><strong>Tudo tranquilo</strong>'
+                    '<p>Nenhum lote com alerta na observação mais recente. Siga o manejo normal.</p></div></div>',
+                    unsafe_allow_html=True)
+        return
+    partes = []
+    for r in ag.head(6).itertuples():
+        cor = COR_CRITICO if r.nivel == "critico" else COR_ATENCAO
+        partes.append(
+            f'<div class="ok-aviso {r.nivel}"><div>'
+            f'<strong>{html.escape(r.lote)} · {html.escape(r.pasto)}</strong>'
+            f'{chip(r.situacao, cor)}'
+            f'<p>{html.escape(r.acao)}</p></div>'
+            f'<span class="ok-quando">{tempo_atras(r.data_hora)}</span></div>'
+        )
+    st.markdown("".join(partes), unsafe_allow_html=True)
+
+
+def grafico_itu_diario(f: pd.DataFrame) -> go.Figure | None:
+    """ITU médio por dia, com as faixas de alerta/perigo/emergência ao fundo."""
+    dia = f.assign(dia=f["data_hora"].dt.normalize()).groupby("dia")["itu"].mean().reset_index()
+    if len(dia) < 2:
+        return None
+    topo = max(float(dia["itu"].max()) + 2, ITU_EMERGENCIA_MIN + 3)
+    base = min(float(dia["itu"].min()) - 3, ITU_ALERTA_MIN - 4)
+    fig = go.Figure()
+    for y0, y1, cor, nome in ((ITU_ALERTA_MIN, ITU_PERIGO_MIN, COR_ATENCAO, "Alerta"),
+                              (ITU_PERIGO_MIN, ITU_EMERGENCIA_MIN, COR_CRITICO, "Perigo"),
+                              (ITU_EMERGENCIA_MIN, topo, COR_CRITICO, "Emergência")):
+        fig.add_hrect(y0=y0, y1=y1, fillcolor=cor, opacity=0.16 if nome == "Emergência" else 0.10, line_width=0,
+                      annotation_text=nome, annotation_position="top right",
+                      annotation_font=dict(size=11, color=COR_TEXTO_SUAVE))
+    fig.add_trace(go.Scatter(
+        x=dia["dia"], y=dia["itu"].round(1), mode="lines+markers", name="ITU médio",
+        line=dict(color=COR_MARCA, width=2), marker=dict(size=8, color=COR_MARCA, line=dict(width=2, color="#FFFEFA")),
+        hovertemplate="%{x|%d/%m}<br>ITU médio: %{y:.1f}<extra></extra>",
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=300, showlegend=False,
+        margin=dict(l=8, r=8, t=16, b=8),
+        font=dict(family='-apple-system, "SF Pro Text", Inter, sans-serif', color=COR_TEXTO, size=13),
+        xaxis=dict(showgrid=False, zeroline=False, showline=True, linecolor=COR_LINHA, tickformat="%d/%m"),
+        yaxis=dict(title="ITU médio", gridcolor=COR_LINHA, gridwidth=0.5, zeroline=False, range=[base, topo]),
+    )
+    return fig
 
 
 def aplicar_estilo() -> None:
@@ -109,7 +248,8 @@ def aplicar_estilo() -> None:
 
 
 def chip(texto: str, cor: str) -> str:
-    return f'<span class="ok-chip" style="background:{cor}">{html.escape(texto)}</span>'
+    txt = COR_TEXTO if cor == COR_ATENCAO else "#fff"  # texto escuro sobre o âmbar, para contraste
+    return f'<span class="ok-chip" style="background:{cor};color:{txt}">{html.escape(texto)}</span>'
 
 
 def cor_do_nivel(nivel: str) -> str:
@@ -278,13 +418,17 @@ def filtros_dashboard(df: pd.DataFrame) -> pd.DataFrame:
 
 def grafico_dispersao(resumo: pd.DataFrame) -> go.Figure:
     fig = go.Figure()
+    ordem = resumo.sort_values("temperatura")["pasto"].tolist()
+    pos_rotulo = {p: ("top center" if i % 2 == 0 else "bottom center") for i, p in enumerate(ordem)}
     for classe in COR_CLASSE:
         sub = resumo[resumo["classificacao"] == classe]
         if sub.empty:
             continue
+        # Rótulos alternando acima/abaixo (por temperatura) para não se sobreporem.
+        posicoes = [pos_rotulo[p] for p in sub["pasto"]]
         fig.add_trace(go.Scatter(
             x=sub["temperatura"], y=sub["fr"], mode="markers+text", name=classe,
-            text=sub["pasto"], textposition="top center", textfont=dict(size=12, color=COR_TEXTO),
+            text=sub["pasto"], textposition=posicoes, textfont=dict(size=12, color=COR_TEXTO),
             marker=dict(size=[min(14 + 7 * math.sqrt(n), 64) for n in sub["registros"]],
                         color=COR_CLASSE[classe], opacity=0.85, line=dict(width=2, color="#FFFFFF")),
             customdata=sub[["registros"]],
@@ -353,6 +497,7 @@ def csv_para_download(df: pd.DataFrame) -> bytes:
 
 
 def aba_painel(df: pd.DataFrame) -> None:
+    hero_painel(df)
     if df.empty:
         estado_vazio("exemplos_painel")
         return
@@ -368,7 +513,7 @@ def aba_painel(df: pd.DataFrame) -> None:
     lotes_alerta = f.loc[f["exige_atencao"], "lote"].nunique()
     st.markdown(
         '<div class="ok-grade">'
-        + cartao_kpi("Registros", f"{len(f)}")
+        + cartao_kpi("Registros", f"{len(f)}", "no período filtrado")
         + cartao_kpi("ITU médio", f"{itu_medio:.1f}", chip(ROTULO_FAIXA_ITU[faixa_medio], cor_faixa))
         + cartao_kpi("Respiração média", f"{f['fr'].mean():.0f}", "movimentos por minuto")
         + cartao_kpi("Lotes em alerta", f"{lotes_alerta}",
@@ -377,12 +522,23 @@ def aba_painel(df: pd.DataFrame) -> None:
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="ok-secao">Calor ou doença? Veja por pasto</div>', unsafe_allow_html=True)
+    avisos_hoje(f)
+
+    st.markdown('<p class="ok-eyebrow" style="margin-top:1.6rem">Por pasto</p>'
+                '<div class="ok-secao" style="margin-top:0">Comparar os pastos</div>', unsafe_allow_html=True)
     st.caption("Cada bolha é um pasto. Quanto maior, mais registros. Acima da linha vermelha, a respiração está alta.")
     st.plotly_chart(grafico_dispersao(resumo_por_pasto(f)), **LARGURA_TOTAL,
                     config={"displayModeBar": False})
 
-    st.markdown('<div class="ok-secao">Lotes em alerta</div>', unsafe_allow_html=True)
+    fig_itu = grafico_itu_diario(f)
+    if fig_itu is not None:
+        st.markdown('<p class="ok-eyebrow" style="margin-top:1.6rem">Ao longo do tempo</p>'
+                    '<div class="ok-secao" style="margin-top:0">ITU médio por dia</div>', unsafe_allow_html=True)
+        st.caption("Quanto mais alto, mais calor sentido pelos animais. As faixas coloridas marcam alerta, perigo e emergência.")
+        st.plotly_chart(fig_itu, **LARGURA_TOTAL, config={"displayModeBar": False})
+
+    st.markdown('<p class="ok-eyebrow" style="margin-top:1.6rem">Histórico de alertas</p>'
+                '<div class="ok-secao" style="margin-top:0">Lotes em alerta</div>', unsafe_allow_html=True)
     tabela_alertas(f)
 
     st.write("")

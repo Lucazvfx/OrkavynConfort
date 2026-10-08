@@ -51,20 +51,25 @@ LOC_GRAVE_MIN = 5
 
 # --- Identidade visual: Campos Orkavyn ---------------------------------------
 # >>> SUBSTITUIR PELOS TOKENS HEX OFICIAIS DO CAMPOS ORKAVYN <<<
-COR_MARCA = "#2F6B45"        # verde da marca (único verde "de marca")
-COR_MARCA_ESCURA = "#245336"
-COR_FUNDO = "#FAFAF7"        # off-white
-COR_CARTAO = "#FFFFFF"
-COR_TEXTO = "#1D1D1F"        # grafite
-COR_TEXTO_SUAVE = "#6E6E73"
-COR_LINHA = "#E8E8E3"
-# Cores de status (só para status)
-COR_OK = "#34A853"
-COR_ATENCAO = "#E8A317"      # âmbar
-COR_CRITICO = "#D93025"
-COR_SANITARIO = "#5B6B8C"    # azul-acinzentado: problema NÃO térmico
-FUNDO_CRITICO = "#FDECEA"    # vermelho suave (linhas críticas)
+COR_MARCA = "#1B3022"        # verde profundo da marca (mesmo do Orkavyn Fields)
+COR_MARCA_ESCURA = "#284832"
+COR_FUNDO = "#FBF9F4"        # canvas off-white
+COR_CARTAO = "#FFFEFA"       # papel
+COR_TEXTO = "#1B1C19"        # grafite
+COR_TEXTO_SUAVE = "#737973"
+COR_LINHA = "#C3C8C1"
+COR_TERRA = "#805533"        # marrom terra (detalhes e links)
+COR_PALHA = "#D4A373"        # couro/palha
+COR_VERDE_SUAVE = "#DCE9DD"  # fundo verde claro
+# Cores de status (só para status). Validadas com o validador de paletas
+# (separação para daltônicos e contraste): ver README do projeto.
+COR_OK = "#2F7D4E"
+COR_ATENCAO = "#D4A017"      # âmbar
+COR_CRITICO = "#B3382B"
+COR_SANITARIO = "#3B6FC0"    # azul: problema NÃO térmico
+FUNDO_CRITICO = "#FFEBE7"    # vermelho suave (linhas críticas)
 FUNDO_ATENCAO = "#FFF4DC"    # âmbar suave
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 # --- Classificações ----------------------------------------------------------
 CLASS_CONFORTO = "Conforto"
