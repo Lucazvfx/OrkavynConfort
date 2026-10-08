@@ -14,6 +14,18 @@ APP_TITULO = "Painel de Conforto do Rebanho"
 # Vilhena-RO fica em UTC-4 (Rondônia não adota horário de verão).
 FUSO = timezone(timedelta(hours=-4))
 
+def obter_segredo(nome: str) -> str:
+    """Lê uma configuração sensível: variável de ambiente ou .streamlit/secrets.toml."""
+    valor = os.environ.get(nome, "")
+    if valor:
+        return valor
+    try:
+        import streamlit as st
+        return str(st.secrets.get(nome, ""))
+    except Exception:  # sem arquivo de secrets ou fora do Streamlit
+        return ""
+
+
 DB_PATH = os.environ.get(
     "ORKAVYN_DB", str(Path(__file__).resolve().parent.parent / "campos_orkavyn.db")
 )

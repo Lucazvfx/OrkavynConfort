@@ -14,8 +14,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from .config import *  # noqa: F401,F403
-from .db import (apagar_exemplos, excluir_observacao,
-                 inserir_observacao, inserir_varias)
+from .db import (apagar_exemplos, excluir_observacao, inserir_observacao,
+                 inserir_varias, modo, verificar_codigo)
 from .motor import (Diagnostico, classificar_itu, diagnosticar, filtrar,
                     gerar_exemplos, lotes_para_agir, resumo_por_pasto,
                     validar_observacao)
@@ -243,6 +243,30 @@ def grafico_itu_diario(f: pd.DataFrame) -> go.Figure | None:
     return fig
 
 
+def codigo_da_sessao() -> str | None:
+    """Código de acesso digitado nesta sessão (cada celular tem a sua)."""
+    return st.session_state.get("codigo")
+
+
+def porta_de_entrada() -> bool:
+    """No modo compartilhado (Supabase), pede o código da equipe uma vez por sessão."""
+    if modo() == "sqlite" or codigo_da_sessao():
+        return True
+    st.markdown('<div class="ok-cartao"><p class="ok-eyebrow">Acesso da equipe</p>'
+                '<div class="ok-secao" style="margin-top:0">Digite o código da fazenda</div>'
+                '<p style="color:#737973;margin:.4rem 0 0">Peça o código ao responsável. '
+                'Você só precisa digitar uma vez em cada celular.</p></div>', unsafe_allow_html=True)
+    with st.form("form_codigo", border=False):
+        digitado = st.text_input("Código de acesso", type="password", placeholder="XXXX-XXXX-XXXX")
+        entrar = st.form_submit_button("Entrar", type="primary")
+    if entrar:
+        if verificar_codigo((digitado or "").strip().upper()):
+            st.session_state["codigo"] = (digitado or "").strip().upper()
+            st.rerun()
+        st.error("Código incorreto. Confira com o responsável e tente de novo.")
+    return False
+
+
 def aplicar_estilo() -> None:
     st.markdown(CSS, unsafe_allow_html=True)
 
@@ -291,7 +315,7 @@ def mostrar_resultado_itu(diag: Diagnostico, titulo: str = "Resultado da observa
 
 def botao_exemplos(chave: str) -> None:
     if st.button("Carregar dados de exemplo", key=chave, type="primary"):
-        inserir_varias(gerar_exemplos())
+        inserir_varias(gerar_exemplos(), codigo_da_sessao())
         st.rerun()
 
 
@@ -382,7 +406,7 @@ def aba_registrar() -> None:
 
     diag = diagnosticar(dados["temperatura"], dados["umidade"], dados["fr"], dados["locomocao"])
     if salvar:
-        inserir_observacao(dados)
+        inserir_observacao(dados, codigo_da_sessao())
         st.session_state["_salvo"] = diag
         st.session_state["_limpar_form"] = True
         st.rerun()
@@ -574,13 +598,18 @@ def aba_historico(df: pd.DataFrame) -> None:
         escolhido = st.selectbox("Qual registro", list(rotulos), format_func=lambda k: rotulos[k], key="h_excluir")
         confirmar = st.checkbox("Tenho certeza de que quero excluir este registro", key="h_confirma")
         if st.button("Excluir registro", key="h_btn_excluir", disabled=not confirmar):
-            excluir_observacao(escolhido)
+            excluir_observacao(escolhido, codigo_da_sessao())
             st.session_state.pop("h_confirma", None)
+            st.rerun()
+
+    if modo() == "supabase":
+        if st.button("Sair deste celular", key="h_sair"):
+            st.session_state.pop("codigo", None)
             st.rerun()
 
     if (df["observador"] == OBSERVADOR_EXEMPLO).any():
         with st.expander("Dados de exemplo"):
             st.caption("Remove apenas os registros fictícios; as observações reais continuam.")
             if st.button("Apagar dados de exemplo", key="h_apagar_exemplos"):
-                apagar_exemplos()
+                apagar_exemplos(codigo_da_sessao())
                 st.rerun()

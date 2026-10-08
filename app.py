@@ -14,9 +14,9 @@ Como rodar:  streamlit run app.py
 import streamlit as st
 
 from orkavyn.config import APP_NOME, APP_TITULO, ASSETS_DIR
-from orkavyn.db import carregar_observacoes, criar_tabelas
+from orkavyn.db import CodigoInvalido, ErroBanco, carregar_observacoes, criar_tabelas
 from orkavyn.motor import enriquecer
-from orkavyn.ui import aba_historico, aba_painel, aba_registrar, aplicar_estilo, topo_marca
+from orkavyn.ui import aba_historico, aba_painel, aba_registrar, aplicar_estilo, codigo_da_sessao, porta_de_entrada, topo_marca
 
 
 def main() -> None:
@@ -27,14 +27,22 @@ def main() -> None:
 
     topo_marca()
 
-    df = enriquecer(carregar_observacoes())
-    aba1, aba2, aba3 = st.tabs(["Registrar", "Painel", "Histórico"])
-    with aba1:
-        aba_registrar()
-    with aba2:
-        aba_painel(df)
-    with aba3:
-        aba_historico(df)
+    if not porta_de_entrada():
+        return
+    try:
+        df = enriquecer(carregar_observacoes(codigo_da_sessao()))
+        aba1, aba2, aba3 = st.tabs(["Registrar", "Painel", "Histórico"])
+        with aba1:
+            aba_registrar()
+        with aba2:
+            aba_painel(df)
+        with aba3:
+            aba_historico(df)
+    except CodigoInvalido:
+        st.session_state.pop("codigo", None)  # código trocado: pede de novo
+        st.rerun()
+    except ErroBanco as e:
+        st.error(f"{e} Seus dados digitados continuam na tela; tente salvar de novo em instantes.")
 
 
 main()
