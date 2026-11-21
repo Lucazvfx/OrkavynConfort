@@ -36,3 +36,20 @@ def business_days_back(end: date, count: int) -> list[date]:
             days.append(cursor)
         cursor -= timedelta(days=1)
     return list(reversed(days))
+
+
+def business_days_between(start: date, end: date) -> int:
+    """Dias úteis em (start, end]. 0 se end <= start."""
+    count, cursor = 0, start
+    while cursor < end:
+        cursor += timedelta(days=1)
+        if is_business_day(cursor):
+            count += 1
+    return count
+
+
+def format_brl(value: float | None) -> str:
+    """1234.5 -> 'R$ 1.234,50'."""
+    if value is None:
+        return "n/d"
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")

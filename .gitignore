@@ -4,4 +4,5 @@ __pycache__/
 .env
 instance/*.db
 instance/*.db-journal
+instance/scheduler.lock
 .pytest_cache/

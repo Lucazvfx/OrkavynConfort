@@ -37,6 +37,14 @@ class FakeHTTP:
     get = post = _match
 
 
+@pytest.fixture(autouse=True)
+def _reset_login_limiter():
+    from app.routes import admin_routes
+    admin_routes._login_attempts.clear()
+    yield
+    admin_routes._login_attempts.clear()
+
+
 @pytest.fixture()
 def app():
     app = create_app(TestConfig)
@@ -49,3 +57,27 @@ def app():
 @pytest.fixture()
 def session(app):
     return _db.session
+
+
+@pytest.fixture()
+def seeded(app):
+    """Banco com dados de demonstração (40 dias úteis até hoje)."""
+    from datetime import date
+
+    import seed
+    seed.RNG.seed(42)
+    seed.populate(date.today(), 40, app.config)
+    return app
+
+
+@pytest.fixture()
+def client(seeded):
+    return seeded.test_client()
+
+
+@pytest.fixture()
+def admin_client(client):
+    r = client.post("/admin/login", json={"password": "test"})
+    assert r.status_code == 200
+    client.csrf = r.json["csrf_token"]
+    return client

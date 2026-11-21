@@ -252,6 +252,22 @@ def run_live_collectors(app) -> None:
             print(f"  ✗ {label}: {exc} (mantidos dados de seed)")
 
 
+def populate(today: date, n_days: int = 120, settings=None) -> list:
+    """Gera todos os dados de demonstração (usado pelo CLI e pelos testes)."""
+    days = business_days_back(today, n_days)
+    pracas = seed_pracas()
+    seed_market_series(pracas, days)
+    db.session.flush()
+    seed_futures(days, pracas["SP_ARACATUBA"])
+    seed_female_slaughter(today)
+    seed_weather(pracas, today)
+    seed_news()
+    db.session.commit()
+    # Boletins pelo motor de regras: o seed nunca chama APIs pagas.
+    return briefing_service.generate_all(db.session, {**(settings or {}), "AI_PROVIDER": "rules"},
+                                         trigger="seed", ref_date=today)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Seed do AgroRadar")
     parser.add_argument("--reset", action="store_true", help="apaga e recria todas as tabelas")
@@ -269,21 +285,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         today = date.today()
-        days = business_days_back(today, args.days)
-        print(f"Gerando {args.days} dias úteis ({days[0]} → {days[-1]}) para {len(PRACAS)} praças...")
-
-        pracas = seed_pracas()
-        seed_market_series(pracas, days)
-        db.session.flush()
-        seed_futures(days, pracas["SP_ARACATUBA"])
-        seed_female_slaughter(today)
-        seed_weather(pracas, today)
-        seed_news()
-        db.session.commit()
-
-        # Boletins gerados pelo motor de regras (o seed nunca chama APIs pagas)
-        briefings = briefing_service.generate_all(db.session, {**app.config, "AI_PROVIDER": "rules"},
-                                                  trigger="seed", ref_date=today)
+        print(f"Gerando {args.days} dias úteis até {today} para {len(PRACAS)} praças...")
+        briefings = populate(today, args.days, app.config)
         print(f"✓ Seed concluído: {len(briefings)} boletins, "
               f"{db.session.query(CattleQuote).count()} cotações, "
               f"{db.session.query(FemaleSlaughterStat).count()} trimestres IBGE (ilustrativos).")

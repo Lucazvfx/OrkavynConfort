@@ -17,6 +17,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 
+from ..utils import format_brl
+from .calculations import compute_trend
 from .http import build_session
 
 log = logging.getLogger(__name__)
@@ -212,12 +214,6 @@ def resolve_provider(settings: Mapping, http=None) -> AIProvider | None:
 # ---------------------------------------------------------------------------
 # Fallback por regras — sempre disponível
 # ---------------------------------------------------------------------------
-def _fmt_money(v: float | None) -> str:
-    if v is None:
-        return "n/d"
-    return f"R$ {v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
 def _fmt_pct(v: float | None) -> str:
     if v is None:
         return "n/d"
@@ -238,8 +234,8 @@ class RuleBasedWriter:
                     trend = "em alta"
                 elif ctx.boi_change_week_pct <= -1:
                     trend = "em baixa"
-            extra = f", vaca {_fmt_money(ctx.vaca_price)}" if ctx.vaca_price else ""
-            lines.append(f"🐂 *{ctx.state_name} ({ctx.praca_name})*: boi gordo a {_fmt_money(ctx.boi_price)}/@ "
+            extra = f", vaca {format_brl(ctx.vaca_price)}" if ctx.vaca_price else ""
+            lines.append(f"🐂 *{ctx.state_name} ({ctx.praca_name})*: boi gordo a {format_brl(ctx.boi_price)}/@ "
                          f"({_fmt_pct(ctx.boi_change_day_pct)} no dia, {_fmt_pct(ctx.boi_change_week_pct)} "
                          f"na semana), mercado {trend}{extra}.")
 
@@ -251,7 +247,7 @@ class RuleBasedWriter:
                 read = "escalas confortáveis"
             else:
                 read = "escalas longas, indústria sem pressa para comprar"
-            basis = (f" Basis vs {ctx.futures_contract}: {_fmt_money(ctx.basis)}/@."
+            basis = (f" Basis vs {ctx.futures_contract}: {format_brl(ctx.basis)}/@."
                      if ctx.basis is not None and ctx.futures_contract else "")
             days = f"{ctx.schedule_days:.1f}".replace(".", ",")
             lines.append(f"🏭 Escala média de {days} dias úteis ({read}); "
@@ -281,17 +277,15 @@ class RuleBasedWriter:
 
     @staticmethod
     def _bias(ctx: BriefingContext) -> str:
-        score = 0
-        if ctx.boi_change_week_pct is not None:
-            score += 1 if ctx.boi_change_week_pct > 0.5 else (-1 if ctx.boi_change_week_pct < -0.5 else 0)
-        if ctx.schedule_days is not None:
-            score += 1 if ctx.schedule_days < 5 else (-1 if ctx.schedule_days > 8 else 0)
-        score += {"alta": 1, "baixa": -1}.get(ctx.weather_bias or "", 0)
-        if score >= 2:
-            return "*Viés de alta* no curto prazo: posição vendedora pode aguardar, sem perder o timing da escala."
-        if score <= -2:
-            return "*Viés de baixa* no curto prazo: avaliar travar preço (termo ou B3) para lotes prontos."
-        return "*Viés neutro*: negociar lote a lote, acompanhando escalas e clima."
+        bal = ctx.sentiment_balance
+        trend = compute_trend(ctx.boi_change_week_pct, ctx.schedule_days, ctx.weather_bias,
+                              bal["positivo"], bal["negativo"])
+        why = ", ".join(trend["drivers"][:3])
+        if trend["direction"] == "alta":
+            return f"*Viés de alta* ({why}): posição vendedora pode aguardar, sem perder o timing da escala."
+        if trend["direction"] == "baixa":
+            return f"*Viés de baixa* ({why}): avaliar travar preço (termo ou B3) para lotes prontos."
+        return f"*Viés neutro* ({why}): negociar lote a lote, acompanhando escalas e clima."
 
 
 # ---------------------------------------------------------------------------

@@ -27,13 +27,15 @@ def price_with_changes(session, praca_id: int, category: str) -> dict:
     """Preço atual + variação vs. cotação anterior (dia) e vs. ≥7 dias corridos antes (semana)."""
     current = latest_quote(session, praca_id, category)
     if not current:
-        return {"price": None, "date": None, "change_day_pct": None, "change_week_pct": None}
+        return {"price": None, "date": None, "change_day_pct": None, "change_week_pct": None,
+                "source": None}
     prev = latest_quote(session, praca_id, category, current.quote_date - timedelta(days=1))
     week = latest_quote(session, praca_id, category, current.quote_date - timedelta(days=7))
     return {
         "price": current.price, "date": current.quote_date,
         "change_day_pct": pct_change(current.price, prev.price if prev else None),
         "change_week_pct": pct_change(current.price, week.price if week else None),
+        "source": current.source,
     }
 
 
