@@ -12,6 +12,8 @@ APScheduler>=3.10,<4
 # --- Testes ---
 pytest>=8.0
 
-# --- PostgreSQL / Supabase (descomente ao migrar) ---
-# psycopg[binary]>=3.1
-gunicorn>=22  # produção (opcional em dev)
+# --- Produção fora da Vercel (opcional) ---
+gunicorn>=22
+
+# --- PostgreSQL / Supabase ---
+psycopg[binary]>=3.1

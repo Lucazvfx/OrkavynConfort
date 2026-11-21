@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["gru1"],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 60,
+      "includeFiles": "{app,seed.py}/**"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "crons": [
+    { "path": "/api/cron/weather", "schedule": "20 8 * * *" },
+    { "path": "/api/cron/rss", "schedule": "40 8 * * *" },
+    { "path": "/api/cron/briefing", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/ibge", "schedule": "0 10 * * 1" }
+  ]
+}

@@ -31,7 +31,18 @@ def _database_url() -> str:
     # Heroku/Supabase às vezes entregam "postgres://", que o SQLAlchemy 2 não aceita.
     if url.startswith("postgres://"):
         url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):  # driver psycopg 3 explícito
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
     return url
+
+
+def _engine_options(url: str) -> dict:
+    if not url.startswith("postgresql"):
+        return {"pool_pre_ping": True}
+    from sqlalchemy.pool import NullPool
+    # Serverless (Vercel) + pooler do Supabase em modo transação:
+    # sem pool local (cada invocação abre/fecha) e sem prepared statements no servidor.
+    return {"poolclass": NullPool, "connect_args": {"prepare_threshold": None}}
 
 
 class Config:
@@ -40,7 +51,15 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_ENGINE_OPTIONS = _engine_options(SQLALCHEMY_DATABASE_URI)
+
+    # Vercel: sistema de arquivos somente leitura (exceto /tmp) e sem processo contínuo.
+    ON_VERCEL = bool(os.getenv("VERCEL"))
+    # Vercel Cron envia "Authorization: Bearer <CRON_SECRET>" automaticamente.
+    CRON_SECRET = os.getenv("CRON_SECRET") or None
+    # Preenche o banco com dados de demonstração se ele estiver vazio (primeiro deploy).
+    AUTO_SEED_DEMO = _bool("AUTO_SEED_DEMO", False)
+    SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", bool(os.getenv("VERCEL")))
 
     # IA
     AI_PROVIDER = os.getenv("AI_PROVIDER", "auto").strip().lower()
@@ -68,6 +87,7 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
+    AUTO_SEED_DEMO = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SCHEDULER_ENABLED = False
     AI_PROVIDER = "rules"

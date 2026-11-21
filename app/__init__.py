@@ -28,7 +28,9 @@ class IsoJSONProvider(DefaultJSONProvider):
 
 
 def create_app(config_class: type[Config] = Config) -> Flask:
-    app = Flask(__name__, instance_path=str(Path(__file__).resolve().parent.parent / "instance"))
+    # Na Vercel só /tmp é gravável; localmente usa ./instance.
+    instance = "/tmp/agroradar-instance" if config_class.ON_VERCEL else str(Path(__file__).resolve().parent.parent / "instance")
+    app = Flask(__name__, instance_path=instance)
     app.config.from_object(config_class)
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
     app.config.setdefault("PERMANENT_SESSION_LIFETIME", timedelta(hours=12))
@@ -46,12 +48,16 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
         # Sem Alembic por enquanto: create_all é idempotente (não altera colunas existentes).
         db.create_all()
+        if app.config.get("AUTO_SEED_DEMO"):
+            _seed_if_empty(app)
 
     from .routes.admin_routes import bp as admin_bp
     from .routes.api_routes import bp as api_bp
+    from .routes.cron_routes import bp as cron_bp
     from .routes.web_routes import bp as web_bp
 
     app.register_blueprint(api_bp)
+    app.register_blueprint(cron_bp)
     app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
 
@@ -63,6 +69,28 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # O agendador NÃO sobe aqui: seed, testes e `flask jobs` também chamam create_app.
     # Quem serve a aplicação (run.py / wsgi.py) chama init_scheduler explicitamente.
     return app
+
+
+def _seed_if_empty(app: Flask) -> None:
+    """Primeiro deploy: popula dados de demonstração se não houver praças.
+
+    Duas instâncias frias simultâneas podem tentar ao mesmo tempo; a restrição
+    única de `pracas.code` faz uma delas falhar e desfazer tudo, sem duplicar.
+    """
+    from .models import Praca
+    if db.session.query(Praca.id).first():
+        return
+    try:
+        import sys
+        root = str(Path(__file__).resolve().parent.parent)
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        import seed
+        seed.populate(date.today(), 60, app.config)
+        log.info("Banco vazio: dados de demonstração carregados.")
+    except Exception as exc:  # outra instância venceu a corrida, ou falha de rede
+        db.session.rollback()
+        log.warning("Seed automático não executado: %s", exc)
 
 
 def _register_cli(app: Flask) -> None:

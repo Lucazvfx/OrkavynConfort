@@ -111,3 +111,21 @@ Tudo que o `seed.py` gera tem `source="seed"` e é **ilustrativo**, não cotaç�
 - Mapa de escalas: vermelho (< 5 dias), âmbar (5–8) e **azul** (> 8). Azul em vez de verde evita o par vermelho/verde, indistinguível para ~8% dos homens. Cada estado tem o número escrito sobre ele e há tabela equivalente.
 - Texto de RSS nunca é inserido como HTML (sem risco de XSS por feed malicioso).
 - `Copiar para WhatsApp` usa a área de transferência; `Abrir no WhatsApp` abre `wa.me` com o texto pronto.
+
+## Deploy (Vercel + Supabase)
+
+- Entrada: `api/index.py`; rotas e agendamentos em `vercel.json` (região `gru1`, São Paulo).
+- Banco: Postgres do Supabase no schema `agroradar` (`DB_SCHEMA=agroradar`), conexão pelo pooler em modo transação.
+  O app usa `NullPool` e desliga prepared statements, exigência desse modo.
+- Agendamento: Vercel Cron chama `/api/cron/<job>` com `Authorization: Bearer $CRON_SECRET`.
+  No plano Hobby cada cron roda no máximo 1x/dia e o horário pode variar dentro da hora:
+  clima ~05:20, notícias ~05:40, boletim ~06:00 (Brasília), IBGE às segundas. Notícias de hora em hora exigem plano Pro
+  ou um agendador externo chamando o mesmo endpoint.
+- `AUTO_SEED_DEMO=true` popula dados de demonstração no primeiro start se o banco estiver vazio.
+
+| Variável | Valor |
+|---|---|
+| `DATABASE_URL` | Supabase → Connect → Transaction pooler (porta 6543) |
+| `DB_SCHEMA` | `agroradar` |
+| `SECRET_KEY`, `ADMIN_PASSWORD`, `CRON_SECRET` | segredos aleatórios |
+| `AUTO_SEED_DEMO` | `true` no primeiro deploy |
