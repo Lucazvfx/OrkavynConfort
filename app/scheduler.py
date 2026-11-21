@@ -5,6 +5,7 @@ Agenda (fuso SCHEDULER_TIMEZONE, padrão America/Sao_Paulo):
   weather   05:20 diário (Open-Meteo atualiza os modelos de madrugada)
   briefing  BRIEFING_HOUR:00 diário (padrão 06:00)
   ibge      segunda 07:00 (o IBGE publica trimestral; checar semanalmente basta)
+  cepea     dias úteis 18:30 (indicadores do dia saem no fim da tarde)
 
 Atenção: 06:00 de Brasília = 05:00 em RO. Ajuste BRIEFING_HOUR se o público for RO/AM.
 
@@ -72,6 +73,7 @@ def build_schedule(app: Flask) -> list[tuple[str, CronTrigger]]:
         ("weather", CronTrigger(hour=pre, minute=20, timezone=tz)),
         ("briefing", CronTrigger(hour=hour, minute=0, timezone=tz)),
         ("ibge", CronTrigger(day_of_week="mon", hour=7, minute=0, timezone=tz)),
+        ("cepea", CronTrigger(day_of_week="mon-fri", hour=18, minute=30, timezone=tz)),
     ]
 
 

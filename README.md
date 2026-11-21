@@ -95,8 +95,8 @@ tests/                   testes offline
 
 | Módulo | Fonte automatizada | Realidade |
 |---|---|---|
-| Arroba (boi/vaca/China), escalas, oferta | **nenhuma** | Não há API pública gratuita (Scot, IMEA, Datagro, Agrifatto são pagos ou sem API). Entrada manual no `/admin`. A API marca `freshness.stale` após 3 dias úteis sem cotação. |
-| Bezerro, milho, farelo | **nenhuma** | Idem — manual. |
+| Boi gordo SP, bezerro MS, milho Campinas | **Cepea/Esalq-USP** (`cepea_service.py`, dias úteis 18:30) | Licença CC BY-NC 4.0: citar a fonte, **uso não comercial**. Um indicador de referência por produto, não por praça. Site com Cloudflare: 1 requisição por indicador por dia. |
+| Arroba nas demais praças, vaca, boi China, escalas, oferta, farelo | **nenhuma** | Sem fonte gratuita que permita reuso (Agrolink proíbe robôs e reprodução nos termos de uso; Scot/Datagro são pagos). Entrada manual no `/admin`. A API marca `freshness.stale` após 3 dias úteis sem cotação. |
 | B3 (BGI) | **nenhuma** | A B3 não oferece API gratuita de ajustes; manual ou feed pago. |
 | Abate de fêmeas | IBGE SIDRA (tab. 1092) | Gratuito; defasagem de ~2,5 meses. |
 | Clima | Open-Meteo | Gratuito, sem chave. |

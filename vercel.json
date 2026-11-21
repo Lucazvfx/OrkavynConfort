@@ -12,6 +12,7 @@
     { "path": "/api/cron/weather", "schedule": "20 8 * * *" },
     { "path": "/api/cron/rss", "schedule": "40 8 * * *" },
     { "path": "/api/cron/briefing", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/ibge", "schedule": "0 10 * * 1" }
+    { "path": "/api/cron/ibge", "schedule": "0 10 * * 1" },
+    { "path": "/api/cron/cepea", "schedule": "30 21 * * 1-5" }
   ]
 }

@@ -12,6 +12,8 @@
     clima: "Clima", sanidade: "Sanidade", politica_economia: "Política e economia", geral: "Geral",
   };
   const PROVIDERS = { rules: "motor de regras", gemini: "Gemini", openai: "OpenAI", ollama: "Ollama" };
+  const SOURCE_LABELS = { cepea: "Cepea/Esalq-USP", manual: "cadastro manual", seed: "demonstração" };
+  const sourceLabel = (src) => SOURCE_LABELS[src] || src || "";
   const SCHED_COLOR = { red: "--esc-curta", yellow: "--esc-conf", green: "--esc-longa" };
 
   // ------------------------------------------------------------------ Chart.js
@@ -151,7 +153,7 @@
     const boi = kpis.prices.boi_gordo;
     $("hero-price").textContent = boi.price == null ? "Sem cotação" : fmt.brl(boi.price);
     $("hero-changes").replaceChildren(changeChip(boi.change_day_pct, "hoje"), changeChip(boi.change_week_pct, "na semana"),
-      el("span", { class: "small muted", text: boi.date ? `cotação de ${fmt.date(boi.date)}` : "" }));
+      el("span", { class: "small muted", text: boi.date ? `cotação de ${fmt.date(boi.date)}, fonte: ${sourceLabel(boi.source)}` : "" }));
     const t = kpis.trend;
     const word = { alta: "Tendência de alta", baixa: "Tendência de baixa", lateral: "Mercado de lado" }[t.direction];
     $("hero-trend").textContent = `${word} nos próximos dias: ${t.drivers.join(", ")}.`;
@@ -353,7 +355,7 @@
       const avg = item.history.average;
       const node = el("article", { class: "glass p-5 flex flex-col" },
         el("p", { class: "text-lg leading-snug" }, ...headline),
-        el("p", { class: "small muted mt-1", text: sub }),
+        el("p", { class: "small muted mt-1", text: `${sub} Fonte: ${sourceLabel(item.source)}.` }),
         el("div", { class: "mt-3" }, signalChip(item.signal)),
         el("div", { class: "mt-3 h-16" }, canvas),
         el("p", { class: "small muted mt-2", text: avg == null ? "" :

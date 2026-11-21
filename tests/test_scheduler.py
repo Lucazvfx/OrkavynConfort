@@ -11,7 +11,7 @@ class SchedConfig(TestConfig):
 def test_schedule_definition():
     app = create_app(TestConfig)
     ids = {job_id: trig for job_id, trig in sched_mod.build_schedule(app)}
-    assert set(ids) == {"rss", "rss_pre_briefing", "weather", "briefing", "ibge"}
+    assert set(ids) == {"rss", "rss_pre_briefing", "weather", "briefing", "ibge", "cepea"}
     assert str(ids["briefing"].fields[5]) == "6"  # hour
 
 
@@ -25,7 +25,7 @@ def test_starts_once_and_lock_blocks_second_process(tmp_path, monkeypatch):
     monkeypatch.setattr(sched_mod, "_scheduler", None)
     s = sched_mod.init_scheduler(app)
     try:
-        assert s is not None and len(s.get_jobs()) == 5
+        assert s is not None and len(s.get_jobs()) == 6
         assert sched_mod.init_scheduler(app) is s           # idempotente no mesmo processo
         monkeypatch.setattr(sched_mod, "_scheduler", None)  # simula outro worker
         assert sched_mod._acquire_lock(str(tmp_path)) is False

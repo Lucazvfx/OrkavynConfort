@@ -27,6 +27,8 @@ def _int(name: str, default: int) -> int:
 def _database_url() -> str:
     url = os.getenv("DATABASE_URL", "").strip()
     if not url:
+        if os.getenv("VERCEL"):  # preview sem banco: SQLite efêmero (some a cada instância)
+            return "sqlite:////tmp/agroradar.db"
         return f"sqlite:///{BASE_DIR / 'instance' / 'agroradar.db'}"
     # Heroku/Supabase às vezes entregam "postgres://", que o SQLAlchemy 2 não aceita.
     if url.startswith("postgres://"):

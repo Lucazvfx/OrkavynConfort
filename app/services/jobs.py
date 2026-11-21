@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 
 from . import briefing_service
+from .cepea_service import sync_cepea
 from .ibge_service import sync_female_slaughter
 from .rss_collector import collect_news
 from .weather_service import update_weather
@@ -23,6 +24,12 @@ def _ibge(session, settings: Mapping, **_) -> dict:
     return {"quarters_upserted": sync_female_slaughter(session, settings)}
 
 
+def _cepea(session, settings: Mapping, **_) -> dict:
+    r = sync_cepea(session, settings)
+    return {"saved": sum(i.saved for i in r.indicators),
+            "failed": [i.key for i in r.failed], "detail": r.summary()}
+
+
 def _briefing(session, settings: Mapping, trigger: str = "scheduler", **_) -> dict:
     rows = briefing_service.generate_all(session, settings, trigger=trigger)
     return {"briefings": len(rows), "providers": sorted({r.provider for r in rows})}
@@ -32,6 +39,7 @@ JOBS: dict[str, Callable[..., dict]] = {
     "rss": _rss,
     "weather": _weather,
     "ibge": _ibge,
+    "cepea": _cepea,
     "briefing": _briefing,
 }
 

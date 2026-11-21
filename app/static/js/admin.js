@@ -5,7 +5,7 @@
   const $ = (id) => document.getElementById(id);
   let csrf = null;
 
-  const JOB_LABELS = { rss: "Notícias", weather: "Clima", ibge: "IBGE", briefing: "Boletim", rss_pre_briefing: "Notícias (antes do boletim)" };
+  const JOB_LABELS = { rss: "Notícias", weather: "Clima", ibge: "IBGE", cepea: "Cepea", briefing: "Boletim", rss_pre_briefing: "Notícias (antes do boletim)" };
   const STATUS = { success: ["chip-up", "✓", "Concluída"], partial: ["chip-warn", "!", "Parcial"], error: ["chip-down", "✕", "Falhou"], running: ["", "…", "Rodando"] };
 
   const today = () => new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD no fuso local
@@ -162,6 +162,7 @@
     if (job === "rss") return `${r.inserted} notícias novas${r.failed_feeds.length ? `; feeds com erro: ${r.failed_feeds.join(", ")}` : ""}.`;
     if (job === "weather") return `${r.snapshots} praças atualizadas.`;
     if (job === "ibge") return `${r.quarters_upserted} trimestres atualizados.`;
+    if (job === "cepea") return `${r.saved} cotações gravadas${r.failed.length ? `; com erro: ${r.failed.join(", ")}` : ""}.`;
     if (job === "briefing") return `${r.briefings} boletins gerados (${r.providers.join(", ")}).`;
     return "";
   }

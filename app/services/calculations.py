@@ -253,6 +253,11 @@ def build_trade_ratios(session, praca: Praca) -> dict:
 
     result: dict = {"boi_gordo_price": boi_now, "items": {}}
 
+    def latest_source(item: str) -> str | None:
+        return session.scalars(select(InputQuote.source).where(
+            InputQuote.praca_id == praca.id, InputQuote.item == item)
+            .order_by(InputQuote.quote_date.desc()).limit(1)).first()
+
     calf = series(InputItem.BEZERRO)
     if calf:
         _, calf_price, _ = calf[-1]
@@ -261,6 +266,7 @@ def build_trade_ratios(session, praca: Praca) -> dict:
         current = round(boi_now * BOI_REFERENCE_ARROBAS / calf_price, 3)
         result["items"]["bezerro"] = {
             "price": calf_price, "unit": InputItem.UNITS[InputItem.BEZERRO], "date": calf[-1][0].isoformat(),
+            "source": latest_source(InputItem.BEZERRO),
             "arrobas_per_calf": round(calf_price / boi_now, 2),
             "calves_per_boi_18": current,
             "history": stats,
@@ -282,6 +288,7 @@ def build_trade_ratios(session, praca: Praca) -> dict:
         current = round(boi_now / sack_price, 3)
         result["items"][item] = {
             "price": price, "unit": InputItem.UNITS[item], "date": rows[-1][0].isoformat(),
+            "source": latest_source(item),
             "sacks60_per_arroba": current,
             "kg_per_arroba": round(boi_now / (price / unit_kg), 1),
             "history": stats,
