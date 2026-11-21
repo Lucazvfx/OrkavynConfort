@@ -83,6 +83,8 @@ def init_scheduler(app: Flask) -> BackgroundScheduler | None:
         return _scheduler
     if not app.config.get("SCHEDULER_ENABLED", True) or app.config.get("TESTING"):
         return None
+    if app.config.get("ON_VERCEL"):  # serverless: quem agenda é o Vercel Cron (vercel.json)
+        return None
     # Reloader do Flask em debug cria um processo pai que não deve agendar nada.
     if app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
         return None

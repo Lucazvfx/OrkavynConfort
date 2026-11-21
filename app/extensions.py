@@ -5,9 +5,16 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase
 
-# DB_SCHEMA isola as tabelas do AgroRadar num schema próprio do Postgres
-# (ex.: "agroradar" dentro de um projeto Supabase compartilhado). Vazio = schema padrão.
-DB_SCHEMA = os.getenv("DB_SCHEMA") or None
+def resolve_schema() -> str | None:
+    """DB_SCHEMA isola as tabelas num schema próprio do Postgres (ex.: "agroradar" num
+    projeto Supabase compartilhado). Só vale com Postgres: SQLite não tem schemas."""
+    url = os.getenv("DATABASE_URL", "")
+    if not url.startswith(("postgres://", "postgresql")):
+        return None
+    return os.getenv("DB_SCHEMA") or None
+
+
+DB_SCHEMA = resolve_schema()
 
 
 class Base(DeclarativeBase):

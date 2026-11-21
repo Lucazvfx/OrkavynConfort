@@ -41,3 +41,26 @@ def test_auto_seed_only_when_empty():
         _seed_if_empty(app)  # segunda chamada não duplica
         assert db.session.query(Praca).count() == 10
         db.drop_all()
+
+
+def test_schema_only_applies_to_postgres(monkeypatch):
+    from app.extensions import resolve_schema
+    monkeypatch.setenv("DB_SCHEMA", "agroradar")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert resolve_schema() is None                      # SQLite (preview sem banco)
+    monkeypatch.setenv("DATABASE_URL", "sqlite:////tmp/x.db")
+    assert resolve_schema() is None
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@h:6543/postgres")
+    assert resolve_schema() == "agroradar"
+
+
+def test_scheduler_never_starts_on_vercel():
+    from app import create_app, scheduler
+    from app.config import TestConfig
+
+    class VercelConfig(TestConfig):
+        TESTING = False
+        SCHEDULER_ENABLED = True
+        ON_VERCEL = True
+
+    assert scheduler.init_scheduler(create_app(VercelConfig)) is None
