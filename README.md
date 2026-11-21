@@ -114,7 +114,7 @@ Tudo que o `seed.py` gera tem `source="seed"` e é **ilustrativo**, não cotaç�
 
 ## Deploy (Vercel + Supabase)
 
-- Entrada: `api/index.py`; rotas e agendamentos em `vercel.json` (região `gru1`, São Paulo).
+- Entrada: `wsgi.py` (a Vercel detecta o Flask por ele); agendamentos em `vercel.json` (região `gru1`, São Paulo).
 - Banco: Postgres do Supabase no schema `agroradar` (`DB_SCHEMA=agroradar`), conexão pelo pooler em modo transação.
   O app usa `NullPool` e desliga prepared statements, exigência desse modo.
 - Agendamento: Vercel Cron chama `/api/cron/<job>` com `Authorization: Bearer $CRON_SECRET`.
