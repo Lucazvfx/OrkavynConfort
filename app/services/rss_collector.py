@@ -4,9 +4,8 @@ Fluxo: baixa o XML com `requests` (timeout/retry controlados — o fetch nativo 
 feedparser não tem timeout), parseia com `feedparser`, normaliza, deduplica por
 hash da URL e classifica (UF/categoria/sentimento) antes de salvar.
 
-ATENÇÃO: as URLs padrão abaixo seguem o padrão público de cada portal, mas
-portais mudam feeds sem aviso. Valide-as no primeiro start (o JobRun registra
-qual feed falhou) e sobrescreva via RSS_FEEDS no .env se necessário.
+Portais mudam feeds sem aviso: o JobRun registra qual feed falhou, e RSS_FEEDS
+no .env sobrescreve a lista padrão.
 """
 from __future__ import annotations
 
@@ -32,10 +31,10 @@ from .news_classifier import classify
 log = logging.getLogger(__name__)
 
 DEFAULT_FEEDS: list[dict[str, str]] = [
+    # Validados ao vivo em 21/11/2026. Notícias Agrícolas e CompreRural ficaram de fora:
+    # protegidos por Cloudflare contra leitores automáticos (HTTP 403 "Just a moment").
     {"name": "Canal Rural", "url": "https://www.canalrural.com.br/feed/"},
-    {"name": "Notícias Agrícolas", "url": "https://www.noticiasagricolas.com.br/rss/noticias.xml"},
-    {"name": "Agrolink", "url": "https://www.agrolink.com.br/rss/noticias.xml"},
-    {"name": "CompreRural", "url": "https://www.comprerural.com/feed/"},
+    {"name": "Agrolink", "url": "https://www.agrolink.com.br/rss/noticias.rss"},
 ]
 
 _TAG_RE = re.compile(r"<[^>]+>")
