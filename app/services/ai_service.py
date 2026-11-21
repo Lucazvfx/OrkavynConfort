@@ -65,6 +65,9 @@ class BriefingContext:
     futures_price: float | None = None
     basis: float | None = None
     headlines: list[dict] = field(default_factory=list)  # [{title, sentiment, category, source}]
+    # Saldo de notícias usado na tendência — o mesmo do KPI do painel, para os dois não divergirem.
+    news_positive: int | None = None
+    news_negative: int | None = None
 
     @property
     def sentiment_balance(self) -> dict[str, int]:
@@ -278,8 +281,9 @@ class RuleBasedWriter:
     @staticmethod
     def _bias(ctx: BriefingContext) -> str:
         bal = ctx.sentiment_balance
-        trend = compute_trend(ctx.boi_change_week_pct, ctx.schedule_days, ctx.weather_bias,
-                              bal["positivo"], bal["negativo"])
+        pos = ctx.news_positive if ctx.news_positive is not None else bal["positivo"]
+        neg = ctx.news_negative if ctx.news_negative is not None else bal["negativo"]
+        trend = compute_trend(ctx.boi_change_week_pct, ctx.schedule_days, ctx.weather_bias, pos, neg)
         why = ", ".join(trend["drivers"][:3])
         if trend["direction"] == "alta":
             return f"*Viés de alta* ({why}): posição vendedora pode aguardar, sem perder o timing da escala."

@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Admin — AgroRadar{% endblock %}
+
+{% block topbar %}
+  <a href="{{ url_for('web.index') }}" class="btn btn-ghost !py-1.5">Ver painel</a>
+  <button type="button" class="btn btn-ghost !py-1.5" id="logout" hidden>Sair</button>
+{% endblock %}
+
+{% block content %}
+<!-- Admin desabilitado -->
+<section id="view-disabled" class="glass mx-auto mt-16 max-w-lg p-8" hidden>
+  <h1 class="h2">Admin desligado</h1>
+  <p class="lede mt-2">Defina <code>ADMIN_PASSWORD</code> no arquivo <code>.env</code> e reinicie o servidor para liberar o painel do administrador.</p>
+</section>
+
+<!-- Login -->
+<section id="view-login" class="glass mx-auto mt-16 max-w-md p-8" hidden>
+  <h1 class="h2">Entrar no admin</h1>
+  <p class="lede small mt-1">Área para cadastrar cotações e rodar as coletas.</p>
+  <form id="login-form" class="mt-6 space-y-4">
+    <div><label class="label" for="password">Senha</label>
+      <input class="field" id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <p class="small text-[var(--queda)]" id="login-error" role="alert"></p>
+    <button class="btn btn-primary w-full" type="submit">Entrar</button>
+  </form>
+</section>
+
+<!-- Painel -->
+<div id="view-panel" hidden>
+  <section class="mt-8 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="h2">Cadastro do dia</h1>
+      <p class="lede small mt-1">Escolha a praça e preencha o que tiver. Campos vazios não alteram nada.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <div><label class="label" for="adm-praca">Praça em edição</label>
+        <select class="field min-w-[14rem]" id="adm-praca"></select></div>
+      <div><label class="label" for="adm-date">Data</label>
+        <input class="field" id="adm-date" type="date"></div>
+    </div>
+  </section>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <form class="glass p-6" id="form-cattle" data-endpoint="/admin/api/quotes/cattle" data-done="Cotação salva">
+      <h2 class="h3">Arroba (R$/@ à vista)</h2>
+      <div class="mt-4 space-y-3">
+        <div><label class="label" for="f-boi">Boi gordo</label><input class="field" id="f-boi" name="boi_gordo" inputmode="decimal" autocomplete="off"></div>
+        <div><label class="label" for="f-vaca">Vaca gorda</label><input class="field" id="f-vaca" name="vaca_gorda" inputmode="decimal" autocomplete="off"></div>
+        <div><label class="label" for="f-china">Boi China</label><input class="field" id="f-china" name="boi_china" inputmode="decimal" autocomplete="off"></div>
+      </div>
+      <button class="btn btn-primary mt-5" type="submit">Salvar cotação</button>
+      <p class="small mt-2 text-[var(--queda)]" data-error role="alert"></p>
+    </form>
+
+    <form class="glass p-6" id="form-schedule" data-endpoint="/admin/api/schedules" data-done="Escala salva">
+      <h2 class="h3">Escala de abate</h2>
+      <div class="mt-4 space-y-3">
+        <div><label class="label" for="f-dias">Dias úteis de escala</label><input class="field" id="f-dias" name="days_ahead" inputmode="decimal" autocomplete="off" required></div>
+        <div><label class="label" for="f-oferta">Oferta de gado</label>
+          <select class="field" id="f-oferta" name="supply_level">
+            <option value="">Calcular pela escala</option>
+            <option value="restrita">Restrita</option><option value="equilibrada">Equilibrada</option><option value="ampla">Ampla</option>
+          </select></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label" for="f-plantas">Frigoríficos consultados</label><input class="field" id="f-plantas" name="plants_surveyed" inputmode="numeric"></div>
+          <div><label class="label" for="f-notas">Observação</label><input class="field" id="f-notas" name="notes" maxlength="200"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary mt-5" type="submit">Salvar escala</button>
+      <p class="small mt-2 text-[var(--queda)]" data-error role="alert"></p>
+    </form>
+
+    <form class="glass p-6" id="form-inputs" data-endpoint="/admin/api/quotes/inputs" data-done="Insumos salvos">
+      <h2 class="h3">Bezerro, milho e farelo</h2>
+      <div class="mt-4 space-y-3">
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2"><label class="label" for="f-bezerro">Bezerro (R$/cabeça)</label><input class="field" id="f-bezerro" name="bezerro" inputmode="decimal" autocomplete="off"></div>
+          <div><label class="label" for="f-peso">Peso (kg)</label><input class="field" id="f-peso" name="bezerro_peso_kg" inputmode="numeric" placeholder="210"></div>
+        </div>
+        <div><label class="label" for="f-milho">Milho (R$/saca 60 kg)</label><input class="field" id="f-milho" name="milho" inputmode="decimal" autocomplete="off"></div>
+        <div><label class="label" for="f-farelo">Farelo de soja (R$/tonelada)</label><input class="field" id="f-farelo" name="farelo_soja" inputmode="decimal" autocomplete="off"></div>
+      </div>
+      <button class="btn btn-primary mt-5" type="submit">Salvar insumos</button>
+      <p class="small mt-2 text-[var(--queda)]" data-error role="alert"></p>
+    </form>
+  </div>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-12">
+    <form class="glass p-6 lg:col-span-7" id="form-futures">
+      <h2 class="h3">Ajustes da B3 (boi gordo BGI)</h2>
+      <p class="small muted mt-1">Vale para todas as praças. Use a data selecionada acima.</p>
+      <table class="tbl mt-3">
+        <thead><tr><th>Contrato</th><th>Ajuste (R$/@)</th><th>Contratos em aberto</th></tr></thead>
+        <tbody id="futures-rows"></tbody>
+      </table>
+      <button class="btn btn-primary mt-5" type="submit">Salvar ajustes</button>
+      <p class="small mt-2 text-[var(--queda)]" data-error role="alert"></p>
+    </form>
+
+    <section class="glass p-6 lg:col-span-5" aria-labelledby="jobs-title">
+      <h2 id="jobs-title" class="h3">Rodar coletas agora</h2>
+      <p class="small muted mt-1">As mesmas rotinas do agendador. Podem levar alguns segundos.</p>
+      <div class="mt-4 grid grid-cols-2 gap-2">
+        <button type="button" class="btn btn-ghost" data-job="rss">Coletar notícias</button>
+        <button type="button" class="btn btn-ghost" data-job="weather">Atualizar clima</button>
+        <button type="button" class="btn btn-ghost" data-job="ibge">Buscar dados do IBGE</button>
+        <button type="button" class="btn btn-primary" data-job="briefing">Gerar boletim</button>
+      </div>
+      <p class="small mt-3 text-[var(--ink-2)]" id="job-result" aria-live="polite"></p>
+      <h3 class="h3 mt-6">Próximas execuções</h3>
+      <ul class="small mt-2 space-y-1" id="next-runs"></ul>
+    </section>
+  </div>
+
+  <section class="glass mt-6 p-6" aria-labelledby="fresh-title">
+    <h2 id="fresh-title" class="h3">Situação dos dados por praça</h2>
+    <p class="small muted mt-1">Destacado em vermelho: mais de 3 dias úteis sem atualização.</p>
+    <div class="mt-3 overflow-x-auto">
+      <table class="tbl">
+        <thead><tr><th>Praça</th><th>Arroba</th><th>Escala</th><th>Insumos</th><th>No painel</th></tr></thead>
+        <tbody id="fresh-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="glass mt-6 p-6" aria-labelledby="runs-title">
+    <h2 id="runs-title" class="h3">Últimas execuções</h2>
+    <div class="mt-3 overflow-x-auto">
+      <table class="tbl">
+        <thead><tr><th>Rotina</th><th>Situação</th><th>Início</th><th>Detalhe</th></tr></thead>
+        <tbody id="run-rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

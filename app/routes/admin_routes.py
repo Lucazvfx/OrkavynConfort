@@ -45,6 +45,11 @@ BOUNDS = {
     "days_ahead": (0, 30), "settlement": (100, 700), "bezerro_peso_kg": (100, 400),
 }
 _MONTH_FROM_CODE = {v: k for k, v in MONTH_CODES.items()}
+FIELD_LABELS = {
+    "boi_gordo": "Boi gordo", "vaca_gorda": "Vaca gorda", "boi_china": "Boi China",
+    "bezerro": "Bezerro", "milho": "Milho", "farelo_soja": "Farelo de soja",
+    "days_ahead": "Dias de escala", "settlement": "Ajuste B3", "bezerro_peso_kg": "Peso do bezerro",
+}
 
 
 class AdminError(Exception):
@@ -167,18 +172,19 @@ def _parse_date(value) -> date:
 
 def _number(data: dict, key: str, errors: list, required: bool = False) -> float | None:
     raw = data.get(key)
+    label = FIELD_LABELS.get(key, key)
     if raw is None or raw == "":
         if required:
-            errors.append(f"'{key}' é obrigatório")
+            errors.append(f"{label}: campo obrigatório")
         return None
     try:
         value = float(str(raw).replace(",", "."))
     except ValueError:
-        errors.append(f"'{key}' deve ser numérico")
+        errors.append(f"{label}: use apenas números (ex.: 301,50)")
         return None
     lo, hi = BOUNDS.get(key, (float("-inf"), float("inf")))
     if not lo <= value <= hi:
-        errors.append(f"'{key}'={value:g} fora da faixa plausível ({lo:g}–{hi:g})")
+        errors.append(f"{label}: {value:g} está fora da faixa plausível ({lo:g} a {hi:g}). Confira a digitação.")
         return None
     return value
 

@@ -52,4 +52,5 @@ def format_brl(value: float | None) -> str:
     """1234.5 -> 'R$ 1.234,50'."""
     if value is None:
         return "n/d"
-    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    text = f"R$\u00a0{abs(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"−{text}" if value < 0 else text

@@ -15,7 +15,7 @@ LLM_TEXT = "🐂 linha 1\n🏭 linha 2\n🌦️ linha 3\n📰 linha 4\n🎯 linh
 def test_rules_when_no_key():
     res = generate_briefing(CTX, {"AI_PROVIDER": "auto"})
     assert res.provider == "rules" and res.fallback_reason is None
-    assert "R$ 300,00" in res.content and "Viés de alta" in res.content
+    assert "R$\u00a0300,00" in res.content and "Viés de alta" in res.content
     assert 4 <= len(res.content.splitlines()) <= 5
 
 

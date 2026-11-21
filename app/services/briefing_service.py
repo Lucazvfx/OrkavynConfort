@@ -11,6 +11,7 @@ from ..models import CattleCategory, DailyBriefing, NewsArticle
 from ..utils import utcnow
 from . import market_queries as mq
 from .ai_service import BriefingContext, generate_briefing
+from .calculations import news_balance
 from .ibge_service import classify_cycle
 from .job_log import track_job
 
@@ -46,7 +47,9 @@ def build_context(session, uf: str, news_pool: list[NewsArticle], ref_date: date
     ordered = sorted(regional, key=lambda n: n.category != "pecuaria_corte") + \
         sorted(national, key=lambda n: n.category != "pecuaria_corte")
 
+    balance = news_balance(session, uf)
     return BriefingContext(
+        news_positive=balance["positivo"], news_negative=balance["negativo"],
         uf=uf, state_name=STATES.get(uf, {}).get("name", uf), praca_name=praca.name,
         ref_date=ref_date.isoformat(),
         boi_price=boi["price"], boi_change_day_pct=boi["change_day_pct"],

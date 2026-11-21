@@ -2,8 +2,8 @@
 
 Hub de inteligência pecuária por estado/praça (RO, MT, MS, GO, SP, PA, TO).
 
-> **Status: Etapa 2 de 3** — backend completo (API, admin, cálculos, agendador).
-> Etapa 3: frontend (Tailwind, mapa de calor, Chart.js, telas do `/admin`).
+> **Status: 3 etapas concluídas** — backend, API, admin, agendador e frontend.
+> Painel em `/`, administração em `/admin/`.
 
 ## Rodando
 
@@ -77,7 +77,15 @@ app/
     api_routes.py        API pública
     admin_routes.py      login, CSRF, entrada manual, disparo de jobs
   scheduler.py           APScheduler + lock de processo único
-  templates/, static/    (Etapa 3)
+    web_routes.py        página do painel
+  templates/             base.html, index.html (painel), admin/index.html
+  static/
+    css/app.css          tokens (eucalipto, vidro, tipografia) e componentes
+    js/common.js         formatação pt-BR, fetch, criação segura de DOM
+    js/dashboard.js      módulos A–H, mapa SVG clicável, gráficos Chart.js
+    js/admin.js          login, cadastro do dia, B3, jobs, situação dos dados
+    js/brazil-map.js     geometria das UFs (CC BY 4.0)
+    vendor/, fonts/      Chart.js, Tailwind (build browser) e Schibsted Grotesk locais
 seed.py                  dados de demonstração
 run.py / wsgi.py         entradas dev / produção (sobem o agendador)
 tests/                   testes offline
@@ -95,3 +103,11 @@ tests/                   testes offline
 | Notícias | RSS dos portais | URLs dos feeds **não validadas** neste ambiente (rede bloqueada); ajuste via `RSS_FEEDS`. |
 
 Tudo que o `seed.py` gera tem `source="seed"` e é **ilustrativo**, não cotação real.
+
+## Frontend
+
+- Sem dependência de CDN: Chart.js, Tailwind e a fonte são servidos de `static/` (funciona em rede restrita de fazenda e não quebra se um CDN cair). Licenças em `static/vendor/LICENSES.md`.
+- Cores dos gráficos validadas para daltonismo (boi gordo azul, vaca laranja, China verde-água). O eucalipto `#54776c` é cor de interface: como cor de série ele fica acinzentado demais ao lado das outras.
+- Mapa de escalas: vermelho (< 5 dias), âmbar (5–8) e **azul** (> 8). Azul em vez de verde evita o par vermelho/verde, indistinguível para ~8% dos homens. Cada estado tem o número escrito sobre ele e há tabela equivalente.
+- Texto de RSS nunca é inserido como HTML (sem risco de XSS por feed malicioso).
+- `Copiar para WhatsApp` usa a área de transferência; `Abrir no WhatsApp` abre `wa.me` com o texto pronto.

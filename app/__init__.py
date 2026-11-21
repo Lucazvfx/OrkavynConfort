@@ -49,8 +49,10 @@ def create_app(config_class: type[Config] = Config) -> Flask:
 
     from .routes.admin_routes import bp as admin_bp
     from .routes.api_routes import bp as api_bp
+    from .routes.web_routes import bp as web_bp
 
     app.register_blueprint(api_bp)
+    app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
 
     @app.get("/healthz")

@@ -53,9 +53,9 @@ def compute_trend(change_week_pct: float | None, schedule_days: float | None,
     score, drivers = 0, []
     if change_week_pct is not None:
         if change_week_pct > 0.5:
-            score += 1; drivers.append(f"preço subiu {change_week_pct:.1f}% na semana")
+            score += 1; drivers.append(f"preço subiu {change_week_pct:.1f}% na semana".replace(".", ","))
         elif change_week_pct < -0.5:
-            score -= 1; drivers.append(f"preço caiu {abs(change_week_pct):.1f}% na semana")
+            score -= 1; drivers.append(f"preço caiu {abs(change_week_pct):.1f}% na semana".replace(".", ","))
     if schedule_days is not None:
         if schedule_days < SCHEDULE_SHORT:
             score += 1; drivers.append("escalas curtas")
