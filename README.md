@@ -96,6 +96,7 @@ tests/                   testes offline
 | Módulo | Fonte automatizada | Realidade |
 |---|---|---|
 | Boi gordo SP, bezerro MS, milho Campinas | **Cepea/Esalq-USP** (`cepea_service.py`, dias úteis 18:30) | Licença CC BY-NC 4.0: citar a fonte, **uso não comercial**. Um indicador de referência por produto, não por praça. Site com Cloudflare: 1 requisição por indicador por dia. |
+| Boi gordo, vaca gorda e escala de MT (Centro-Sul→Cuiabá, Oeste→Pontes e Lacerda) | **IMEA** (`imea_service.py`), **desligado** (`IMEA_ENABLED=false`) | Sem licença publicada; autorização solicitada ao instituto. Ligar só após o "sim" por escrito. Formato da API inferido do código da página, não validado. |
 | Arroba nas demais praças, vaca, boi China, escalas, oferta, farelo | **nenhuma** | Sem fonte gratuita que permita reuso (Agrolink proíbe robôs e reprodução nos termos de uso; Scot/Datagro são pagos). Entrada manual no `/admin`. A API marca `freshness.stale` após 3 dias úteis sem cotação. |
 | B3 (BGI) | **nenhuma** | A B3 não oferece API gratuita de ajustes; manual ou feed pago. |
 | Abate de fêmeas | IBGE SIDRA (tab. 1092) | Gratuito; defasagem de ~2,5 meses. |

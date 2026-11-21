@@ -12,7 +12,7 @@
     clima: "Clima", sanidade: "Sanidade", politica_economia: "Política e economia", geral: "Geral",
   };
   const PROVIDERS = { rules: "motor de regras", gemini: "Gemini", openai: "OpenAI", ollama: "Ollama" };
-  const SOURCE_LABELS = { cepea: "Cepea/Esalq-USP", manual: "cadastro manual", seed: "demonstração" };
+  const SOURCE_LABELS = { cepea: "Cepea/Esalq-USP", imea: "IMEA", manual: "cadastro manual", seed: "demonstração" };
   const sourceLabel = (src) => SOURCE_LABELS[src] || src || "";
   const SCHED_COLOR = { red: "--esc-curta", yellow: "--esc-conf", green: "--esc-longa" };
 

@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from . import briefing_service
 from .cepea_service import sync_cepea
 from .ibge_service import sync_female_slaughter
+from .imea_service import sync_imea
 from .rss_collector import collect_news
 from .weather_service import update_weather
 
@@ -30,6 +31,11 @@ def _cepea(session, settings: Mapping, **_) -> dict:
             "failed": [i.key for i in r.failed], "detail": r.summary()}
 
 
+def _imea(session, settings: Mapping, **_) -> dict:
+    r = sync_imea(session, settings)
+    return {"enabled": r.enabled, "saved": r.saved, "detail": r.summary()}
+
+
 def _briefing(session, settings: Mapping, trigger: str = "scheduler", **_) -> dict:
     rows = briefing_service.generate_all(session, settings, trigger=trigger)
     return {"briefings": len(rows), "providers": sorted({r.provider for r in rows})}
@@ -40,6 +46,7 @@ JOBS: dict[str, Callable[..., dict]] = {
     "weather": _weather,
     "ibge": _ibge,
     "cepea": _cepea,
+    "imea": _imea,
     "briefing": _briefing,
 }
 

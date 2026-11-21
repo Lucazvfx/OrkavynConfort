@@ -74,6 +74,7 @@ def build_schedule(app: Flask) -> list[tuple[str, CronTrigger]]:
         ("briefing", CronTrigger(hour=hour, minute=0, timezone=tz)),
         ("ibge", CronTrigger(day_of_week="mon", hour=7, minute=0, timezone=tz)),
         ("cepea", CronTrigger(day_of_week="mon-fri", hour=18, minute=30, timezone=tz)),
+        ("imea", CronTrigger(day_of_week="mon-fri", hour=18, minute=0, timezone=tz)),
     ]
 
 

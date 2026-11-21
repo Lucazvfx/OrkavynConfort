@@ -61,6 +61,8 @@ class Config:
     CRON_SECRET = os.getenv("CRON_SECRET") or None
     # Preenche o banco com dados de demonstração se ele estiver vazio (primeiro deploy).
     AUTO_SEED_DEMO = _bool("AUTO_SEED_DEMO", False)
+    # IMEA (MT): só ligar após autorização por escrito do instituto.
+    IMEA_ENABLED = _bool("IMEA_ENABLED", False)
     SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", bool(os.getenv("VERCEL")))
 
     # IA
