@@ -56,7 +56,11 @@
     <form class="glass p-6" id="form-schedule" data-endpoint="/admin/api/schedules" data-done="Escala salva">
       <h2 class="h3">Escala de abate</h2>
       <div class="mt-4 space-y-3">
-        <div><label class="label" for="f-dias">Dias úteis de escala</label><input class="field" id="f-dias" name="days_ahead" inputmode="decimal" autocomplete="off" required></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="label" for="f-abate">Data do abate agendado</label><input class="field" id="f-abate" name="abate_date" type="date"></div>
+          <div><label class="label" for="f-dias">ou dias úteis</label><input class="field" id="f-dias" name="days_ahead" inputmode="decimal" autocomplete="off"></div>
+        </div>
+        <p class="small muted -mt-1">Pergunte ao frigorífico: "se eu fechar hoje, para quando escala o abate?". O sistema conta os dias úteis.</p>
         <div><label class="label" for="f-oferta">Oferta de gado</label>
           <select class="field" id="f-oferta" name="supply_level">
             <option value="">Calcular pela escala</option>

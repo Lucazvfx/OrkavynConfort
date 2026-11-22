@@ -87,3 +87,27 @@ def test_briefing_job_runs_with_rules(admin_client):
 def test_status(admin_client):
     s = admin_client.get("/admin/api/status").json
     assert len(s["pracas"]) == 10 and len(s["contracts_to_fill"]) == 4
+
+
+def test_schedule_from_abate_date_counts_business_days(admin_client, session):
+    from app.utils import business_days_between
+    d = date.today()
+    abate = d + timedelta(days=7)
+    r = post(admin_client, "/admin/api/schedules", {"praca": "RO_VILHENA", "date": d.isoformat(), "abate_date": abate.isoformat()})
+    assert r.status_code == 200 and r.json["days_ahead"] == business_days_between(d, abate)
+    bad = post(admin_client, "/admin/api/schedules", {"praca": "RO_VILHENA", "abate_date": d.isoformat()})
+    assert bad.status_code == 422
+    empty = post(admin_client, "/admin/api/schedules", {"praca": "RO_VILHENA"})
+    assert empty.status_code == 422 and "data do abate" in empty.json["details"][0]
+
+
+def test_national_reference_when_praca_has_no_schedule(admin_client, session):
+    from app.models import Praca
+    session.add(Praca(code="BR_MEDIA", name="Média nacional", uf="BR", latitude=0, longitude=0, active=False))
+    session.query(SlaughterSchedule).filter(SlaughterSchedule.praca.has(code="PA_MARABA")).delete(synchronize_session=False)
+    session.commit()
+    post(admin_client, "/admin/api/schedules", {"praca": "BR_MEDIA", "days_ahead": 5.77})
+    k = admin_client.get("/api/kpis?praca=PA_MARABA").json
+    assert k["schedule"]["days_ahead"] is None
+    assert k["schedule"]["national_reference"]["days_ahead"] == 5.77
+    assert "BR_MEDIA" not in [p["code"] for s in admin_client.get("/api/pracas").json["states"] for p in s["pracas"]]

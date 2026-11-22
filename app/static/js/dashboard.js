@@ -202,8 +202,17 @@
     setSeg("seg-oferta", { restrita: 0, equilibrada: 1, ampla: 2 }[d.kpis.supply.level] ?? -1);
     const t = d.kpis.trend;
     setSeg("seg-trend", { baixa: 0, lateral: 1, alta: 2 }[t.direction]);
-    $("kpi-escala").textContent = sched == null ? "Escala sem dado" : `${fmt.num(sched)} dias úteis`;
-    $("kpi-escala-label").textContent = sched == null ? "(cadastre no admin)" : `· ${s.label}`;
+    const ref = s.national_reference;
+    if (sched == null && ref) {
+      const i = ref.days_ahead < 5 ? 0 : ref.days_ahead <= 8 ? 1 : 2;
+      [...$("seg-escala").children].forEach((c, j) => c.classList.toggle("ref", j === i));
+      $("kpi-escala").textContent = `Sem escala de ${d.praca.name}.`;
+      $("kpi-escala-label").textContent = `Referência nacional: ${fmt.num(ref.days_ahead)} dias úteis (${sourceLabel(ref.source)}, ${fmt.date(ref.date)})`;
+    } else {
+      [...$("seg-escala").children].forEach((c) => c.classList.remove("ref"));
+      $("kpi-escala").textContent = sched == null ? "Escala sem dado" : `${fmt.num(sched)} dias úteis`;
+      $("kpi-escala-label").textContent = sched == null ? "(cadastre no admin)" : `· ${s.label}${s.source && s.source !== "manual" ? ` (${sourceLabel(s.source)})` : ""}`;
+    }
     $("kpi-date").textContent = s.date ? fmt.date(s.date) : "";
     $("kpi-drivers").replaceChildren(...t.drivers.map((x) => el("li", { text: `• ${x}` })));
   }

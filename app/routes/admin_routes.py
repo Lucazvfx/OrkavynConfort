@@ -31,6 +31,7 @@ from ..models import (
 from ..scheduler import next_runs
 from ..services.calculations import contracts_for_admin
 from ..services.jobs import JOBS, run_job
+from ..utils import business_days_between
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -275,10 +276,31 @@ def save_input_quotes():
 @bp.post("/api/schedules")
 @admin_required
 def save_schedule():
-    """{praca, date?, days_ahead, supply_level?, plants_surveyed?, notes?}"""
+    """{praca, date?, days_ahead | abate_date, supply_level?, plants_surveyed?, notes?}
+
+    Em vez dos dias úteis, aceita a data do abate que o frigorífico informou
+    (abate_date) e conta os dias úteis a partir da data de referência.
+    """
     data = _payload()
     praca, d, errors = _get_praca(data.get("praca")), _parse_date(data.get("date")), []
-    days = _number(data, "days_ahead", errors, required=True)
+    days = _number(data, "days_ahead", errors)
+    if days is None and not errors:
+        raw = data.get("abate_date")
+        if not raw:
+            errors.append("Informe os dias úteis de escala ou a data do abate agendado")
+        else:
+            try:
+                abate = date.fromisoformat(str(raw))
+            except ValueError:
+                abate = None
+                errors.append("Data do abate inválida (use AAAA-MM-DD)")
+            if abate is not None:
+                if abate <= d:
+                    errors.append("A data do abate precisa ser depois da data da cotação")
+                else:
+                    days = float(business_days_between(d, abate))
+                    if days > BOUNDS["days_ahead"][1]:
+                        errors.append(f"Abate em {days:g} dias úteis: fora da faixa plausível (até 30)")
     supply = data.get("supply_level") or None
     if supply and supply not in SupplyLevel.ALL:
         errors.append(f"supply_level deve ser um de {SupplyLevel.ALL}")

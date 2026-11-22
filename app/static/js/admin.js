@@ -64,6 +64,9 @@
         sel.append(g);
       });
       const ref = pracas.states[0].pracas.find((p) => p.is_state_reference) || pracas.states[0].pracas[0];
+      const refGroup = el("optgroup", { label: "Referência" });
+      refGroup.append(el("option", { value: "BR_MEDIA", text: "Média nacional (só escala)" }));
+      sel.append(refGroup);
       sel.value = localStorage.getItem("ar.admin.praca") || ref.code;
       sel.addEventListener("change", () => { localStorage.setItem("ar.admin.praca", sel.value); loadPlaceholders(); });
       $("adm-date").value = today();

@@ -26,6 +26,10 @@ BOI_REFERENCE_ARROBAS = 18        # "1 boi gordo de 18@"
 SACK_KG = 60
 
 # Escala de abate (Módulos A e F)
+# Praça oculta (inativa) que guarda a média nacional da escala, usada como referência
+# quando a praça não tem escala própria. Nunca colore o mapa nem entra na tendência.
+NATIONAL_REF_CODE = "BR_MEDIA"
+
 SCHEDULE_SHORT = 5.0
 SCHEDULE_LONG = 8.0
 
@@ -196,6 +200,13 @@ def build_kpis(session, praca: Praca) -> dict:
     trend = compute_trend(boi["change_week_pct"], sched.days_ahead if sched else None,
                           weather.price_bias if weather else None, bal["positivo"], bal["negativo"])
     sources = {p["source"] for p in prices.values() if p["source"]} | ({sched.source} if sched else set())
+    reference = None
+    if sched is None:
+        ref_praca = session.scalars(select(Praca).where(Praca.code == NATIONAL_REF_CODE)).first()
+        ref = mq.latest_schedule(session, ref_praca.id) if ref_praca else None
+        if ref:
+            reference = {"days_ahead": ref.days_ahead, "date": ref.ref_date.isoformat(), "source": ref.source,
+                         **schedule_signal(ref.days_ahead)}
     return {
         "prices": {cat: {**p, "label": CattleCategory.LABELS[cat],
                          "date": p["date"].isoformat() if p["date"] else None}
@@ -204,6 +215,8 @@ def build_kpis(session, praca: Praca) -> dict:
             "days_ahead": sched.days_ahead if sched else None,
             "date": sched.ref_date.isoformat() if sched else None,
             "plants_surveyed": sched.plants_surveyed if sched else None,
+            "source": sched.source if sched else None,
+            "national_reference": reference,
             **schedule_signal(sched.days_ahead if sched else None),
         },
         "supply": {"level": sched.supply_level if sched else None},
