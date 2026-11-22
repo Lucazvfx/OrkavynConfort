@@ -1,0 +1,19 @@
+# --- Core web ---
+Flask>=3.0,<4
+Flask-SQLAlchemy>=3.1,<4
+SQLAlchemy>=2.0,<3
+python-dotenv>=1.0
+
+# --- Coleta e automação ---
+requests>=2.31
+feedparser>=6.0
+APScheduler>=3.10,<4
+
+# --- Testes ---
+pytest>=8.0
+
+# --- Produção fora da Vercel (opcional) ---
+gunicorn>=22
+
+# --- PostgreSQL / Supabase ---
+psycopg[binary]>=3.1
