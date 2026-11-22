@@ -38,6 +38,8 @@
         body: JSON.stringify({ password: $("password").value }) });
       csrf = r.csrf_token;
       $("password").value = "";
+      const next = new URLSearchParams(location.search).get("next");
+      if (next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/admin")) { location.href = next; return; }
       show("view-panel");
       await loadPanel();
     } catch (err) {

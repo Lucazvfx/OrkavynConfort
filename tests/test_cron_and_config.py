@@ -64,3 +64,22 @@ def test_scheduler_never_starts_on_vercel():
         ON_VERCEL = True
 
     assert scheduler.init_scheduler(create_app(VercelConfig)) is None
+
+
+def test_private_site_requires_login(seeded):
+    seeded.config["PRIVATE_SITE"] = True
+    c = seeded.test_client()
+    r = c.get("/?praca=RO_VILHENA")
+    assert r.status_code == 302 and r.headers["Location"].startswith("/admin/?next=/")
+    assert c.get("/api/kpis").status_code == 401
+    assert c.get("/healthz").status_code == 200
+    assert c.get("/admin/").status_code == 200                      # tela de login acessível
+    assert c.get("/static/css/app.css").status_code == 200
+    assert c.get("/api/cron/rss").status_code == 503                # cron segue com a própria chave
+    assert c.post("/admin/login", json={"password": "test"}).status_code == 200
+    assert c.get("/api/kpis").status_code == 200
+    assert c.get("/").headers.get("X-Robots-Tag") == "noindex, nofollow"
+
+
+def test_public_site_when_flag_off(client):
+    assert client.get("/api/kpis").status_code == 200

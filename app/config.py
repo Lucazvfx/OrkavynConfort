@@ -61,6 +61,8 @@ class Config:
     CRON_SECRET = os.getenv("CRON_SECRET") or None
     # Preenche o banco com dados de demonstração se ele estiver vazio (primeiro deploy).
     AUTO_SEED_DEMO = _bool("AUTO_SEED_DEMO", False)
+    # Site privado: exige login (senha do admin) em todas as páginas e na API.
+    PRIVATE_SITE = _bool("PRIVATE_SITE", False)
     # IMEA (MT): só ligar após autorização por escrito do instituto.
     IMEA_ENABLED = _bool("IMEA_ENABLED", False)
     SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", bool(os.getenv("VERCEL")))
@@ -91,6 +93,7 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
+    PRIVATE_SITE = False
     AUTO_SEED_DEMO = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SCHEDULER_ENABLED = False

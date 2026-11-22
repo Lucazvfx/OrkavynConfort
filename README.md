@@ -129,4 +129,5 @@ Tudo que o `seed.py` gera tem `source="seed"` e é **ilustrativo**, não cotaç�
 | `DATABASE_URL` | Supabase → Connect → Transaction pooler (porta 6543) |
 | `DB_SCHEMA` | `agroradar` |
 | `SECRET_KEY`, `ADMIN_PASSWORD`, `CRON_SECRET` | segredos aleatórios |
-| `AUTO_SEED_DEMO` | `true` no primeiro deploy |
+| `AUTO_SEED_DEMO` | `false` em produção (só dados reais) |
+| `PRIVATE_SITE` | `true`: todo o site exige a senha do admin (uso pessoal); sessão de 30 dias |

@@ -61,6 +61,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(web_bp)
     app.register_blueprint(admin_bp)
 
+    _register_private_gate(app)
+
     @app.get("/healthz")
     def healthz():
         return jsonify(status="ok")
@@ -69,6 +71,36 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     # O agendador NÃO sobe aqui: seed, testes e `flask jobs` também chamam create_app.
     # Quem serve a aplicação (run.py / wsgi.py) chama init_scheduler explicitamente.
     return app
+
+
+# Rotas que continuam acessíveis sem login quando o site é privado.
+_PUBLIC_PREFIXES = ("/static/", "/healthz", "/api/cron/", "/admin/login", "/admin/logout", "/admin/session")
+_PUBLIC_EXACT = {"/admin/", "/admin"}
+
+
+def _register_private_gate(app: Flask) -> None:
+    """Com PRIVATE_SITE=true, tudo exige a sessão do admin (uso pessoal, um único usuário)."""
+    from flask import redirect, request, session
+
+    if app.config.get("PRIVATE_SITE"):
+        app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+
+    @app.before_request
+    def _require_login():
+        if not app.config.get("PRIVATE_SITE"):
+            return None
+        path = request.path
+        if path in _PUBLIC_EXACT or path.startswith(_PUBLIC_PREFIXES) or session.get("is_admin"):
+            return None
+        if path.startswith("/api/"):
+            return jsonify(error="Não autenticado: entre em /admin/"), 401
+        return redirect(f"/admin/?next={request.full_path.rstrip('?')}")
+
+    @app.after_request
+    def _no_index(resp):
+        if app.config.get("PRIVATE_SITE"):
+            resp.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return resp
 
 
 def _seed_if_empty(app: Flask) -> None:
