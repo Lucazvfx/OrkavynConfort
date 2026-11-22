@@ -20,12 +20,12 @@
   Chart.defaults.font.family = css("--font");
   Chart.defaults.font.size = 12;
   Chart.defaults.color = css("--ink-3");
-  Chart.defaults.borderColor = "rgba(29,43,39,.07)";
+  Chart.defaults.borderColor = "rgba(255,255,255,.06)";
   Chart.defaults.maintainAspectRatio = false;
   Chart.defaults.animation.duration = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 400;
   Object.assign(Chart.defaults.plugins.tooltip, {
-    backgroundColor: "rgba(255,255,255,.96)", titleColor: css("--ink"), bodyColor: css("--ink-2"),
-    borderColor: "rgba(29,43,39,.12)", borderWidth: 1, padding: 10, cornerRadius: 10,
+    backgroundColor: "#1f2123", titleColor: css("--ink"), bodyColor: css("--ink-2"),
+    borderColor: "rgba(255,255,255,.14)", borderWidth: 1, padding: 10, cornerRadius: 10,
     titleFont: { weight: "700" }, boxPadding: 4, usePointStyle: true,
   });
 
@@ -131,7 +131,7 @@
       renderTrade(d.trade); renderCycle(d.cycle); renderWeather(d.weather); renderB3(d.futures);
       markMapSelection();
       $("app").classList.remove("loading");
-      await Promise.all([loadHistory(), loadNews(true)]);
+      await Promise.all([loadHistory(), loadNews(true), loadNewsMini()]);
     } catch (err) {
       $("notices").replaceChildren(el("div", { class: "notice", role: "alert" },
         `Não foi possível carregar o painel: ${err.message}. Verifique se o servidor está rodando e se o seed foi executado.`));
@@ -146,8 +146,21 @@
       el("span", { "aria-hidden": "true", text: up ? "▲" : down ? "▼" : "■" }), `${fmt.pct(v)} ${suffix}`);
   }
 
+  function greeting() {
+    const h = new Date().getHours();
+    return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  }
+
   function renderHero(d) {
     const { praca, state: st, kpis } = d;
+    $("greeting").textContent = `${greeting()}. Como está o boi hoje?`;
+    const f = kpis.freshness;
+    $("hero-sub").replaceChildren(f.stale
+      ? el("span", { class: "text-[var(--atencao)]" }, "⚠ ", f.last_date
+          ? `Cotação de ${praca.name} é de ${fmt.date(f.last_date)}`
+          : `${praca.name} ainda sem cotação cadastrada`)
+      : el("span", { text: `${praca.name}, ${st.name}: cotação de ${fmt.date(f.last_date)}` }));
+    $("today-label").textContent = `Hoje em ${praca.name}`;
     $("hero-place").textContent = `${praca.name}, ${st.name}`;
     $("hero-region").textContent = praca.region || "";
     const boi = kpis.prices.boi_gordo;
@@ -156,12 +169,12 @@
       el("span", { class: "small muted", text: boi.date ? `cotação de ${fmt.date(boi.date)}, fonte: ${sourceLabel(boi.source)}` : "" }));
     const t = kpis.trend;
     const word = { alta: "Tendência de alta", baixa: "Tendência de baixa", lateral: "Mercado de lado" }[t.direction];
-    $("hero-trend").textContent = `${word} nos próximos dias: ${t.drivers.join(", ")}.`;
+    $("hero-trend").textContent = `${word}: ${t.drivers.join(", ")}`;
 
     const other = (cat) => {
       const p = kpis.prices[cat];
       return el("div", {}, el("dt", { class: "small muted", text: p.label }),
-        el("dd", { class: "figure text-2xl mt-0.5" }, fmt.brl(p.price),
+        el("dd", { class: "figure text-xl mt-0.5" }, fmt.brl(p.price),
           el("span", { class: "small muted font-normal ml-2", text: p.change_week_pct == null ? "" : `${fmt.pct(p.change_week_pct)} na semana` })));
     };
     $("hero-others").replaceChildren(other("vaca_gorda"), other("boi_china"));
@@ -174,31 +187,25 @@
     if (k.is_demo) box.append(el("div", { class: "notice" }, el("span", { "aria-hidden": "true", text: "ⓘ" }),
       el("span", {}, "Você está vendo dados de demonstração. Cadastre cotações reais no ", el("a", { href: "/admin/", class: "underline font-semibold", text: "Admin" }), ".")));
     if (k.freshness.stale) box.append(el("div", { class: "notice", role: "alert" }, el("span", { "aria-hidden": "true", text: "!" }),
-      el("span", { text: k.freshness.last_date
-        ? `A última cotação de ${d.praca.name} é de ${fmt.date(k.freshness.last_date)} (${k.freshness.business_days_old} dias úteis). Atualize no Admin.`
-        : `${d.praca.name} ainda não tem cotação cadastrada. Cadastre no Admin.` })));
+      el("span", {}, k.freshness.last_date
+        ? `A última cotação de ${d.praca.name} é de ${fmt.date(k.freshness.last_date)} (${k.freshness.business_days_old} dias úteis). `
+        : `${d.praca.name} ainda não tem cotação cadastrada. `, el("a", { href: "/admin/", class: "link font-semibold", text: "Atualizar no admin" }))));
+  }
+
+  function setSeg(id, index) {
+    [...$(id).children].forEach((c, i) => c.classList.toggle("on", i === index));
   }
 
   function renderKpis(d) {
-    const s = d.kpis.schedule;
-    $("kpi-escala").textContent = fmt.num(s.days_ahead);
-    $("kpi-pin").style.left = `${Math.min(Math.max((s.days_ahead || 0) / 12, 0), 1) * 100}%`;
-    $("kpi-escala-label").replaceChildren(el("span", { class: "dot", style: `background:var(${SCHED_COLOR[s.color] || "--ink-3"})` }), ` ${s.label}`,
-      s.plants_surveyed ? el("span", { class: "muted", text: ` (${s.plants_surveyed} frigoríficos consultados)` }) : null);
-    $("kpi-escala-label").className = "small mt-2 flex items-center gap-1.5 flex-wrap";
-
-    const supply = d.kpis.supply.level;
-    $("kpi-oferta").textContent = supply || "sem dado";
-    $("kpi-oferta-note").textContent = {
-      restrita: "Pouco boi terminado ofertado: indústria disputa lotes.",
-      equilibrada: "Oferta e demanda dos frigoríficos em equilíbrio.",
-      ampla: "Muito boi ofertado: comprador com poder de barganha.",
-    }[supply] || "";
-
+    const s = d.kpis.schedule, sched = s.days_ahead;
+    setSeg("seg-escala", sched == null ? -1 : sched < 5 ? 0 : sched <= 8 ? 1 : 2);
+    setSeg("seg-oferta", { restrita: 0, equilibrada: 1, ampla: 2 }[d.kpis.supply.level] ?? -1);
     const t = d.kpis.trend;
-    $("kpi-trend").replaceChildren(el("span", { "aria-hidden": "true", text: { alta: "▲ ", baixa: "▼ ", lateral: "▶ " }[t.direction] }),
-      { alta: "Alta", baixa: "Baixa", lateral: "Lateral" }[t.direction]);
-    $("kpi-drivers").replaceChildren(...t.drivers.map((x) => el("li", { text: x })));
+    setSeg("seg-trend", { baixa: 0, lateral: 1, alta: 2 }[t.direction]);
+    $("kpi-escala").textContent = sched == null ? "Escala sem dado" : `${fmt.num(sched)} dias úteis`;
+    $("kpi-escala-label").textContent = sched == null ? "(cadastre no admin)" : `· ${s.label}`;
+    $("kpi-date").textContent = s.date ? fmt.date(s.date) : "";
+    $("kpi-drivers").replaceChildren(...t.drivers.map((x) => el("li", { text: `• ${x}` })));
   }
 
   // ------------------------------------------------------------------ D: boletim
@@ -325,53 +332,31 @@
   }
 
   // ------------------------------------------------------------------ B: relação de troca
-  function signalChip(sig) {
-    const cls = { favoravel: "chip-up", apertada: "chip-down" }[sig.status] || "";
-    const icon = { favoravel: "✓", apertada: "!", neutra: "=" }[sig.status] || "·";
-    return el("span", { class: `chip ${cls}` }, el("span", { "aria-hidden": "true", text: icon }), sig.label);
-  }
-
-  function sparkline(canvas, series, avg) {
-    return new Chart(canvas, {
-      type: "line",
-      data: { labels: series.map((p) => fmt.date(p.date)), datasets: [lineDs("Valor", series.map((p) => p.value), css("--eucalipto"), { borderWidth: 2 })] },
-      options: {
-        interaction: { mode: "index", intersect: false },
-        scales: { x: { display: false }, y: { display: false, grace: "15%" } },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${fmt.num(c.parsed.y, 2)}` } },
-          refLines: { lines: avg != null ? [{ y: avg, label: "média" }] : [] } },
-      },
-    });
+  /** 7 pontos: aceso = valor daquele dia acima da média histórica. */
+  function trendDots(series, avg) {
+    const last = series.slice(-7);
+    return el("span", { class: "dots", "aria-hidden": "true" },
+      ...last.map((p) => el("i", { class: avg != null && p.value >= avg ? "on" : "" })));
   }
 
   function renderTrade(t) {
-    (state.charts.spark || []).forEach((c) => c.destroy());
-    state.charts.spark = [];
-    const grid = $("trade-grid");
-    const cards = [];
-    const it = t.items;
-    const card = (headline, sub, item) => {
-      const canvas = el("canvas", { "aria-label": "Evolução da relação de troca" });
-      const avg = item.history.average;
-      const node = el("article", { class: "glass p-5 flex flex-col" },
-        el("p", { class: "text-lg leading-snug" }, ...headline),
-        el("p", { class: "small muted mt-1", text: `${sub} Fonte: ${sourceLabel(item.source)}.` }),
-        el("div", { class: "mt-3" }, signalChip(item.signal)),
-        el("div", { class: "mt-3 h-16" }, canvas),
-        el("p", { class: "small muted mt-2", text: avg == null ? "" :
-          `Média do histórico: ${fmt.num(avg, 2)} (${item.history.observations} cotações). Hoje: ${fmt.pct(item.signal.deviation_pct)} vs. média.` }));
-      cards.push([canvas, item.series, avg]);
-      return node;
+    const it = t.items, rows = [];
+    const row = (label, value, item) => {
+      const st = item.signal.status;
+      return el("li", { class: "list-row" },
+        el("span", { class: `check ${st === "favoravel" ? "ok" : st === "apertada" ? "bad" : ""}`, "aria-hidden": "true",
+          text: st === "favoravel" ? "✓" : st === "apertada" ? "!" : "" }),
+        el("div", { class: "min-w-0 flex-1" },
+          el("p", { class: "trunc text-[.95rem]", text: label }),
+          el("p", { class: "small muted trunc", text: `${item.signal.label}. Fonte: ${sourceLabel(item.source)}` })),
+        trendDots(item.series, item.history.average),
+        el("span", { class: "figure text-right min-w-[3.6rem]", text: value }));
     };
-    const nodes = [];
-    if (it.bezerro) nodes.push(card(["1 boi de 18@ compra ", el("strong", { class: "figure text-3xl", text: fmt.num(it.bezerro.calves_per_boi_18, 2) }), " bezerros"],
-      `Bezerro a ${fmt.brl(it.bezerro.price)} por cabeça, ou ${fmt.num(it.bezerro.arrobas_per_calf)}@ de boi gordo.`, it.bezerro));
-    if (it.milho) nodes.push(card(["1 arroba paga ", el("strong", { class: "figure text-3xl", text: fmt.num(it.milho.sacks60_per_arroba) }), " sacas de milho"],
-      `Saca de 60 kg a ${fmt.brl(it.milho.price)}.`, it.milho));
-    if (it.farelo_soja) nodes.push(card(["1 arroba paga ", el("strong", { class: "figure text-3xl", text: `${fmt.num(it.farelo_soja.kg_per_arroba, 0)} kg` }), " de farelo de soja"],
-      `Tonelada a ${fmt.brl(it.farelo_soja.price)} (${fmt.num(it.farelo_soja.sacks60_per_arroba)} sacas de 60 kg por @).`, it.farelo_soja));
-    grid.replaceChildren(...(nodes.length ? nodes : [el("p", { class: "muted", text: "Sem cotações de bezerro, milho ou farelo para esta praça. Cadastre no Admin." })]));
-    cards.forEach(([c, s, a]) => state.charts.spark.push(sparkline(c, s, a)));
+    if (it.bezerro) rows.push(row("Bezerros / boi 18@", fmt.num(it.bezerro.calves_per_boi_18, 2), it.bezerro));
+    if (it.milho) rows.push(row("Sacas de milho / @", fmt.num(it.milho.sacks60_per_arroba), it.milho));
+    if (it.farelo_soja) rows.push(row("Kg de farelo / @", fmt.num(it.farelo_soja.kg_per_arroba, 0), it.farelo_soja));
+    $("trade-list").replaceChildren(...(rows.length ? rows : [el("li", { class: "small muted py-2",
+      text: t.boi_gordo_price == null ? "Sem preço do boi nesta praça para calcular a troca." : "Sem cotação de bezerro, milho ou farelo nesta praça." })]));
   }
 
   // ------------------------------------------------------------------ C: ciclo
@@ -491,11 +476,10 @@
       const { result: r, price_projection: proj } = await api("/api/simulator", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const hold = r.decisao === "segurar";
-      const row = (k, v) => el("div", { class: "flex justify-between gap-4 py-2 border-t border-[var(--hairline)]" },
+      const row = (k, v) => el("div", { class: "flex justify-between gap-4 py-2 border-t border-[var(--line)]" },
         el("dt", { class: "text-[var(--ink-2)]", text: k }), el("dd", { class: "figure text-right", text: v }));
-      $("sim-result").replaceChildren(
-        el("h3", { class: "h3", text: "Resultado" }),
-        el("p", { class: "mt-3 figure text-4xl", style: `color:${hold ? css("--eucalipto-escuro") : css("--queda")}`, text: hold ? "Segurar compensa" : "Vender agora" }),
+      $("sim-result").replaceChildren(el("div", { class: "card-head" }, el("h3", { class: "card-title", text: "Resultado" })), el("div", { class: "card-body" },
+        el("p", { class: "figure text-3xl", style: `color:${hold ? css("--eucalipto-claro") : css("--queda")}`, text: hold ? "Segurar compensa" : "Vender agora" }),
         el("p", { class: "mt-1 text-lg", text: `${r.lucro_incremental >= 0 ? "+" : "−"}${fmt.brl(Math.abs(r.lucro_incremental))} por cabeça vs. vender hoje` }),
         el("dl", { class: "mt-5 small" },
           row("Peso na venda", `${fmt.num(r.peso_final_kg, 0)} kg`),
@@ -507,7 +491,7 @@
           row("Receita segurando", fmt.brl(r.receita_segurar)),
           row("Custo de engorda", fmt.brl(r.custo_total)),
           row("Custo de oportunidade (juros)", fmt.brl(r.custo_oportunidade))),
-        proj ? el("p", { class: "small muted mt-3", text: `Preço de venda projetado: ajuste ${proj.contract} de ${fmt.brl(proj.settlement)} somado ao basis atual de ${fmt.brl(proj.basis_rs)}.` }) : null);
+        proj ? el("p", { class: "small muted mt-3", text: `Preço de venda projetado: ajuste ${proj.contract} de ${fmt.brl(proj.settlement)} somado ao basis atual de ${fmt.brl(proj.basis_rs)}.` }) : null));
     } catch (err) {
       $("sim-error").textContent = err.details ? err.details.join("; ") : err.message;
     } finally {
@@ -533,6 +517,23 @@
     $("news-more").hidden = state.newsPage * res.per_page >= res.total;
   }
 
+  async function loadNewsMini() {
+    const res = await api(`/api/news?uf=${encodeURIComponent(state.uf)}&per_page=5`);
+    $("news-mini-count").textContent = `${res.total} no total`;
+    $("news-mini").replaceChildren(...(res.items.length ? res.items.map((n) => {
+      const demo = n.source === "AgroRadar Demo";
+      const url = /^https?:\/\//i.test(n.url) && !demo ? n.url : null;
+      const title = url ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer", class: "trunc block text-[.93rem] hover:underline", text: n.title })
+                        : el("span", { class: "trunc block text-[.93rem]", text: n.title });
+      const sentCls = { positivo: "chip-up", negativo: "chip-down" }[n.sentiment] || "";
+      return el("li", { class: "list-row" }, el("span", { class: "dot-ring", "aria-hidden": "true" }),
+        el("div", { class: "min-w-0 flex-1" }, title,
+          el("div", { class: "mt-1 flex items-center gap-2 small muted" },
+            el("span", { class: `chip ${sentCls}`, text: CATEGORY_LABELS[n.category] || n.category }),
+            el("span", { text: fmt.ago(n.published_at || n.collected_at) }))));
+    }) : [el("li", { class: "small muted py-2", text: "Sem notícias recentes para esta região." })]));
+  }
+
   function newsItem(n) {
     const demo = n.source === "AgroRadar Demo";
     const safeUrl = /^https?:\/\//i.test(n.url) && !demo ? n.url : null;
@@ -549,7 +550,56 @@
   }
 
   // ------------------------------------------------------------------ eventos fixos
+  function wireTabs() {
+    const tabs = [$("tab-cot"), $("tab-bol")], panels = [$("panel-cot"), $("panel-bol")];
+    const select = (i) => tabs.forEach((t, j) => {
+      t.setAttribute("aria-selected", String(i === j)); t.tabIndex = i === j ? 0 : -1; panels[j].hidden = i !== j;
+    });
+    tabs.forEach((t, i) => {
+      t.addEventListener("click", () => select(i));
+      t.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") { const k = (i + 1) % 2; select(k); tabs[k].focus(); }
+      });
+    });
+  }
+
+  function wirePalette() {
+    const bd = $("palette"), input = $("palette-input"), list = $("palette-list");
+    const options = [...$("praca-select").querySelectorAll("option")].map((o) => ({ code: o.value, label: o.textContent,
+      state: o.parentElement.label }));
+    let hl = 0, shown = options;
+    const render = () => {
+      list.replaceChildren(...shown.map((o, i) => el("li", {}, el("button", { type: "button", class: i === hl ? "hl" : "",
+        onclick: () => { close(); selectPraca(o.code); } }, el("span", { text: o.label }), el("span", { class: "muted small", text: o.state })))));
+    };
+    const open = () => { bd.hidden = false; input.value = ""; shown = options; hl = 0; render(); input.focus(); };
+    const close = () => { bd.hidden = true; };
+    const norm = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    input.addEventListener("input", () => { const q = norm(input.value); shown = options.filter((o) => norm(`${o.label} ${o.state}`).includes(q)); hl = 0; render(); });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { hl = Math.min(hl + 1, shown.length - 1); render(); e.preventDefault(); }
+      if (e.key === "ArrowUp") { hl = Math.max(hl - 1, 0); render(); e.preventDefault(); }
+      if (e.key === "Enter" && shown[hl]) { close(); selectPraca(shown[hl].code); }
+      if (e.key === "Escape") close();
+    });
+    bd.addEventListener("click", (e) => { if (e.target === bd) close(); });
+    $("open-search").addEventListener("click", open);
+    document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); open(); } });
+  }
+
+  function wireDock() {
+    const links = [...document.querySelectorAll(".dock a[data-sec]")];
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (!en.isIntersecting) return;
+        links.forEach((a) => a.classList.toggle("active", a.dataset.sec === en.target.id));
+      });
+    }, { rootMargin: "-45% 0px -50% 0px" });
+    links.forEach((a) => { const sec = document.getElementById(a.dataset.sec); if (sec) obs.observe(sec); });
+  }
+
   function wireStatic() {
+    wireTabs(); wirePalette(); wireDock();
     $("copy-briefing").addEventListener("click", copyBriefing);
     document.querySelectorAll("[data-days]").forEach((b) => b.addEventListener("click", () => {
       state.days = Number(b.dataset.days);

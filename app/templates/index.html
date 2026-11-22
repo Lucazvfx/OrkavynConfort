@@ -1,228 +1,257 @@
 {% extends "base.html" %}
 {% block title %}AgroRadar — mercado do boi por praça{% endblock %}
 
+{% macro icon(name, size=18) -%}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'home' %}<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+{%- elif name == 'pulse' %}<path d="M3 12h4l3-8 4 16 3-8h4"/>
+{%- elif name == 'map' %}<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>
+{%- elif name == 'swap' %}<path d="M7 7h11l-3-3M17 17H6l3 3"/>
+{%- elif name == 'cycle' %}<path d="M21 12a9 9 0 1 1-9-9"/><path d="M12 3v9h9"/>
+{%- elif name == 'rain' %}<path d="M7 15a4 4 0 1 1 .8-7.9A5.5 5.5 0 0 1 18 9a3.5 3.5 0 0 1-.5 7H7z"/><path d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/>
+{%- elif name == 'candle' %}<path d="M7 3v4M7 17v4M17 3v6M17 19v2"/><rect x="5" y="7" width="4" height="10" rx="1"/><rect x="15" y="9" width="4" height="10" rx="1"/>
+{%- elif name == 'calc' %}<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/>
+{%- elif name == 'news' %}<path d="M4 5h13v14H6a2 2 0 0 1-2-2V5z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/>
+{%- elif name == 'search' %}<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+{%- elif name == 'plus' %}<path d="M12 5v14M5 12h14"/>
+{%- elif name == 'tag' %}<path d="M3 12V4h8l9 9-8 8-9-9z"/><circle cx="7.5" cy="7.5" r="1.2"/>
+{%- elif name == 'doc' %}<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>
+{%- elif name == 'copy' %}<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>
+{%- elif name == 'arrow' %}<path d="M5 12h14M13 6l6 6-6 6"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
 {% block topbar %}
+  <button type="button" class="pill-btn" id="open-search" aria-label="Buscar praça">
+    {{ icon('search', 16) }}<span class="hidden sm:inline">Buscar praça</span><span class="kbd hidden sm:inline">Ctrl</span><span class="kbd hidden sm:inline">K</span>
+  </button>
   <label for="praca-select" class="sr-only">Praça</label>
-  <select id="praca-select" class="field !w-auto max-w-[13rem] sm:min-w-[13rem] !rounded-full !py-1.5" aria-label="Escolher praça"></select>
-  <span class="hidden sm:inline"><a href="/admin/" class="btn btn-ghost !py-1.5">Admin</a></span>
+  <select id="praca-select" class="field pill-btn !w-auto max-w-[9.5rem] sm:max-w-[12rem]" aria-label="Escolher praça"></select>
+{% endblock %}
+
+{% block hero %}
+<section class="hero" id="inicio" aria-labelledby="greeting">
+  <div class="hero-enter mx-auto max-w-[1240px]">
+    <h1 class="greeting" id="greeting">Como está o boi hoje?</h1>
+    <p class="hero-sub" id="hero-sub" data-skel>Carregando a praça…</p>
+
+    <div class="command" id="command">
+      <div class="tabs" role="tablist" aria-label="Resumo da praça">
+        <button class="tab" role="tab" id="tab-cot" aria-selected="true" aria-controls="panel-cot">{{ icon('tag', 16) }}Cotação</button>
+        <button class="tab" role="tab" id="tab-bol" aria-selected="false" aria-controls="panel-bol" tabindex="-1">{{ icon('doc', 16) }}Boletim das 6h</button>
+      </div>
+
+      <div class="tab-panel" role="tabpanel" id="panel-cot" aria-labelledby="tab-cot">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <p class="h3" id="hero-place" data-skel>Praça</p>
+          <p class="small muted" id="hero-region"></p>
+        </div>
+        <p class="price mt-3" aria-live="polite"><span id="hero-price" data-skel>R$ 000,00</span><span class="unit">/@ boi gordo</span></p>
+        <div class="mt-3 flex flex-wrap items-center gap-2" id="hero-changes"></div>
+        <dl class="mt-4 flex flex-wrap gap-x-8 gap-y-2" id="hero-others"></dl>
+      </div>
+
+      <div class="tab-panel" role="tabpanel" id="panel-bol" aria-labelledby="tab-bol" hidden>
+        <p class="small muted" id="briefing-meta"></p>
+        <div id="briefing-body" class="mt-3 text-[.97rem] leading-relaxed"><p>Carregando boletim…</p></div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary" id="copy-briefing">{{ icon('copy', 16) }}Copiar para WhatsApp</button>
+          <a class="btn btn-ghost" id="share-briefing" target="_blank" rel="noopener" href="#">Abrir no WhatsApp</a>
+        </div>
+      </div>
+
+      <div class="command-foot">
+        <span id="hero-trend" data-skel>Calculando tendência…</span>
+        <a href="#simulador" class="round-btn" aria-label="Ir para o simulador">{{ icon('arrow', 16) }}</a>
+      </div>
+    </div>
+  </div>
+</section>
 {% endblock %}
 
 {% block content %}
 <div id="app" class="loading">
+  <div id="notices" class="space-y-2"></div>
 
-  <div id="notices" class="mt-5 space-y-2"></div>
+  <div class="mt-6 flex items-center justify-between">
+    <p class="section-label" id="today-label">Hoje</p>
+    <a href="/admin/" class="small link">Atualizar cotações no admin</a>
+  </div>
 
-  <!-- HERO: preço da arroba + Boletim das 6h -->
-  <section class="hero-enter mt-8 grid gap-8 lg:grid-cols-12 lg:gap-10" aria-labelledby="hero-place">
-    <div class="lg:col-span-7">
-      <p id="hero-place" class="h3 text-[var(--eucalipto-escuro)]" data-skel>Carregando praça</p>
-      <p class="muted small mt-0.5" id="hero-region" data-skel>região</p>
-
-      <p class="hero-price mt-5" aria-live="polite">
-        <span id="hero-price" data-skel>R$ 000,00</span><span class="unit">/@ boi gordo</span>
-      </p>
-
-      <div class="mt-4 flex flex-wrap items-center gap-2" id="hero-changes"></div>
-      <p class="lede mt-4 text-lg" id="hero-trend" data-skel>Calculando tendência de curto prazo.</p>
-
-      <dl class="mt-6 flex flex-wrap gap-x-10 gap-y-3" id="hero-others"></dl>
-    </div>
-
-    <aside class="glass glass-strong lg:col-span-5 p-6 sm:p-7" aria-labelledby="briefing-title">
-      <h2 id="briefing-title" class="h2">Boletim das 6h</h2>
-      <p class="muted small mt-1" id="briefing-meta"></p>
-      <div id="briefing-body" class="mt-4 text-[1.0125rem] leading-relaxed"><p data-skel>Carregando boletim…</p></div>
-      <div class="mt-5 flex flex-wrap gap-2">
-        <button type="button" class="btn btn-primary" id="copy-briefing">Copiar para WhatsApp</button>
-        <a class="btn btn-ghost" id="share-briefing" target="_blank" rel="noopener" href="#">Abrir no WhatsApp</a>
+  <!-- Linha de 3 cards -->
+  <section class="mt-3 grid gap-4 lg:grid-cols-3 [&>*]:min-w-0" id="mercado">
+    <article class="card" aria-labelledby="mk-title">
+      <div class="card-head"><h2 class="card-title" id="mk-title">{{ icon('pulse') }}Como está o mercado?</h2><span class="small muted" id="kpi-date"></span></div>
+      <div class="card-body">
+        <div class="seg-row"><span class="small muted">Escala</span>
+          <div class="seg" id="seg-escala" aria-label="Escala de abate"><span>&lt; 5 d</span><span>5–8 d</span><span>&gt; 8 d</span></div></div>
+        <div class="seg-row"><span class="small muted">Oferta</span>
+          <div class="seg" id="seg-oferta" aria-label="Oferta de gado"><span>Restrita</span><span>Equilibr.</span><span>Ampla</span></div></div>
+        <div class="seg-row"><span class="small muted">Tendência</span>
+          <div class="seg" id="seg-trend" aria-label="Tendência de curto prazo"><span>Baixa</span><span>Lateral</span><span>Alta</span></div></div>
+        <p class="small mt-3 text-[var(--ink-2)]"><span class="figure text-[var(--ink)]" id="kpi-escala" data-skel>—</span> <span id="kpi-escala-label"></span></p>
+        <ul class="small mt-1 space-y-0.5 text-[var(--ink-3)]" id="kpi-drivers"></ul>
       </div>
-    </aside>
-  </section>
+    </article>
 
-  <!-- KPIs: escala, oferta, tendência -->
-  <section class="glass kpi-strip mt-10" aria-label="Indicadores da praça">
-    <div>
-      <h2 class="h3">Escala de abate</h2>
-      <p class="mt-2"><span class="figure text-4xl" id="kpi-escala" data-skel>0,0</span> <span class="muted">dias úteis</span></p>
-      <div class="meter mt-3" id="kpi-meter" aria-hidden="true">
-        <span style="flex:5;background:var(--esc-curta)"></span>
-        <span style="flex:3;background:var(--esc-conf)"></span>
-        <span style="flex:4;background:var(--esc-longa)"></span>
-        <i class="meter-pin" id="kpi-pin" style="left:0"></i>
-      </div>
-      <p class="small mt-2" id="kpi-escala-label"></p>
-    </div>
-    <div>
-      <h2 class="h3">Oferta de gado</h2>
-      <p class="mt-2 figure text-3xl capitalize" id="kpi-oferta" data-skel>—</p>
-      <p class="small muted mt-2" id="kpi-oferta-note"></p>
-    </div>
-    <div>
-      <h2 class="h3">Tendência de curto prazo</h2>
-      <p class="mt-2 figure text-3xl" id="kpi-trend" data-skel>—</p>
-      <ul class="small mt-2 space-y-0.5 text-[var(--ink-2)]" id="kpi-drivers"></ul>
-    </div>
+    <article class="card" aria-labelledby="tr-title" id="troca">
+      <div class="card-head"><h2 class="card-title" id="tr-title">{{ icon('swap') }}Quanto o boi compra hoje?</h2><span class="small muted">vs. média</span></div>
+      <div class="card-body"><ul id="trade-list"></ul></div>
+    </article>
+
+    <article class="card" aria-labelledby="nw-title">
+      <div class="card-head"><h2 class="card-title" id="nw-title">{{ icon('news') }}Notícias</h2><span class="small muted" id="news-mini-count"></span></div>
+      <div class="card-body"><ul id="news-mini"></ul>
+        <a href="#noticias" class="small link mt-2 inline-block">Ver todas as notícias</a></div>
+    </article>
   </section>
 
   <!-- Mapa + histórico -->
-  <section class="mt-14 grid gap-6 lg:grid-cols-12">
-    <div class="glass lg:col-span-5 p-6" aria-labelledby="map-title">
-      <h2 id="map-title" class="h2">Onde os frigoríficos estão apertados?</h2>
-      <p class="lede small mt-1">Média da escala de abate por estado. Toque em um estado para ver a praça.</p>
-      <div class="relative mt-4" id="map-wrap">
-        <svg class="map-svg w-full h-auto" id="map" role="group" aria-label="Mapa do Brasil com escalas de abate"></svg>
-        <div class="tip" id="map-tip" hidden></div>
+  <section class="mt-4 grid gap-4 lg:grid-cols-12">
+    <article class="card lg:col-span-5" aria-labelledby="map-title" id="mapa">
+      <div class="card-head"><h2 class="card-title" id="map-title">{{ icon('map') }}Onde os frigoríficos estão apertados?</h2></div>
+      <div class="card-body">
+        <p class="small muted">Média da escala de abate por estado. Toque em um estado para abrir a praça.</p>
+        <div class="relative mt-3" id="map-wrap">
+          <svg class="map-svg w-full h-auto" id="map" role="group" aria-label="Mapa do Brasil com escalas de abate"></svg>
+          <div class="tip" id="map-tip" hidden></div>
+        </div>
+        <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 small text-[var(--ink-2)]" id="map-legend"></ul>
+        <details class="mt-3">
+          <summary class="small cursor-pointer link">Ver escalas em tabela</summary>
+          <table class="tbl mt-2"><thead><tr><th>Estado</th><th class="num">Dias úteis</th><th>Leitura</th></tr></thead><tbody id="map-table"></tbody></table>
+        </details>
       </div>
-      <ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1 small" id="map-legend"></ul>
-      <details class="mt-4">
-        <summary class="small cursor-pointer text-[var(--eucalipto-escuro)]">Ver escalas em tabela</summary>
-        <table class="tbl mt-2"><thead><tr><th>Estado</th><th class="num">Dias úteis</th><th>Leitura</th></tr></thead>
-          <tbody id="map-table"></tbody></table>
-      </details>
-    </div>
+    </article>
 
-    <div class="glass lg:col-span-7 p-6 flex flex-col" aria-labelledby="hist-title">
-      <div class="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="hist-title" class="h2">Como a arroba andou?</h2>
+    <article class="card lg:col-span-7 flex flex-col" aria-labelledby="hist-title">
+      <div class="card-head">
+        <h2 class="card-title" id="hist-title">{{ icon('pulse') }}Como a arroba andou?</h2>
         <div class="flex gap-1" role="group" aria-label="Período">
           <button class="chip" data-days="30">30 dias</button>
           <button class="chip chip-up" data-days="90" aria-pressed="true">90 dias</button>
           <button class="chip" data-days="180">180 dias</button>
         </div>
       </div>
-      <div class="mt-4 h-[320px] lg:h-auto lg:flex-1 lg:min-h-[320px]"><canvas id="chart-history" aria-label="Preço da arroba por categoria"></canvas></div>
-    </div>
-  </section>
-
-  <!-- Relação de troca -->
-  <section class="mt-14" aria-labelledby="trade-title">
-    <h2 id="trade-title" class="h2">Quanto um boi gordo compra hoje?</h2>
-    <p class="lede mt-1">Relação de troca da praça, comparada com a média de todo o histórico cadastrado.</p>
-    <div class="mt-5 grid gap-4 md:grid-cols-3" id="trade-grid"></div>
+      <div class="card-body flex-1"><div class="h-[320px] lg:h-full lg:min-h-[320px]"><canvas id="chart-history" aria-label="Preço da arroba por categoria"></canvas></div></div>
+    </article>
   </section>
 
   <!-- Ciclo + clima -->
-  <section class="mt-14 grid gap-6 lg:grid-cols-2">
-    <div class="glass p-6" aria-labelledby="cycle-title">
-      <h2 id="cycle-title" class="h2">Em que fase está o ciclo?</h2>
-      <p class="lede small mt-1" id="cycle-sub">Participação de fêmeas no abate total (IBGE, trimestral).</p>
-      <div class="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span class="figure text-4xl" id="cycle-share" data-skel>00,0%</span>
-        <span class="chip" id="cycle-phase"></span>
-        <span class="small muted" id="cycle-yoy"></span>
+  <section class="mt-4 grid gap-4 lg:grid-cols-2">
+    <article class="card" aria-labelledby="cycle-title" id="ciclo">
+      <div class="card-head"><h2 class="card-title" id="cycle-title">{{ icon('cycle') }}Em que fase está o ciclo?</h2><span class="chip" id="cycle-phase"></span></div>
+      <div class="card-body">
+        <p class="small muted" id="cycle-sub">Participação de fêmeas no abate total (IBGE, trimestral).</p>
+        <div class="mt-3 flex flex-wrap items-baseline gap-x-3"><span class="figure text-3xl" id="cycle-share" data-skel>—</span><span class="small muted" id="cycle-yoy"></span></div>
+        <p class="small mt-1 text-[var(--ink-2)]" id="cycle-msg"></p>
+        <div class="mt-3 h-[240px]"><canvas id="chart-cycle" aria-label="Percentual de fêmeas no abate por trimestre"></canvas></div>
       </div>
-      <p class="small mt-2 text-[var(--ink-2)]" id="cycle-msg"></p>
-      <div class="mt-4 h-[260px]"><canvas id="chart-cycle" aria-label="Percentual de fêmeas no abate por trimestre"></canvas></div>
-    </div>
+    </article>
 
-    <div class="glass p-6" aria-labelledby="weather-title">
-      <h2 id="weather-title" class="h2">O que a chuva diz sobre a oferta?</h2>
-      <p class="lede small mt-1">Previsão de 15 dias na praça (Open-Meteo).</p>
-      <div class="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span class="figure text-4xl" id="weather-mm" data-skel>000 mm</span>
-        <span class="chip" id="weather-chip"></span>
+    <article class="card" aria-labelledby="weather-title" id="clima">
+      <div class="card-head"><h2 class="card-title" id="weather-title">{{ icon('rain') }}O que a chuva diz sobre a oferta?</h2><span class="chip" id="weather-chip"></span></div>
+      <div class="card-body">
+        <p class="small muted">Previsão de 15 dias na praça (Open-Meteo).</p>
+        <p class="mt-3"><span class="figure text-3xl" id="weather-mm" data-skel>—</span></p>
+        <p class="small mt-1 text-[var(--ink-2)]" id="weather-msg"></p>
+        <div class="mt-3 h-[240px]"><canvas id="chart-weather" aria-label="Chuva diária prevista em milímetros"></canvas></div>
       </div>
-      <p class="small mt-2 text-[var(--ink-2)]" id="weather-msg"></p>
-      <div class="mt-4 h-[260px]"><canvas id="chart-weather" aria-label="Chuva diária prevista em milímetros"></canvas></div>
-    </div>
+    </article>
   </section>
 
-  <!-- B3 e basis -->
-  <section class="mt-14 glass p-6" aria-labelledby="b3-title">
-    <h2 id="b3-title" class="h2">O físico está caro ou barato contra a B3?</h2>
-    <p class="lede small mt-1" id="b3-sub">Basis = preço físico da praça − ajuste do contrato futuro de boi gordo (BGI).</p>
-    <div class="mt-5 grid gap-6 lg:grid-cols-12">
-      <div class="lg:col-span-6 min-w-0 overflow-x-auto">
-        <table class="tbl">
-          <thead><tr><th>Contrato</th><th>Vencimento</th><th class="num">Ajuste (R$/@)</th><th class="num">Basis (R$/@)</th><th class="num">Basis (%)</th></tr></thead>
-          <tbody id="b3-table"></tbody>
-        </table>
-        <p class="small mt-3 text-[var(--ink-2)]" id="b3-reading"></p>
-        <p class="small muted mt-1" id="b3-note"></p>
-      </div>
-      <div class="lg:col-span-6">
-        <h3 class="h3">Basis do 1º vencimento, últimos 60 dias</h3>
-        <div class="mt-3 h-[220px]"><canvas id="chart-basis" aria-label="Histórico do basis"></canvas></div>
+  <!-- B3 -->
+  <section class="mt-4 card" aria-labelledby="b3-title" id="b3">
+    <div class="card-head"><h2 class="card-title" id="b3-title">{{ icon('candle') }}O físico está caro ou barato contra a B3?</h2></div>
+    <div class="card-body">
+      <p class="small muted" id="b3-sub">Basis = preço físico da praça − ajuste do contrato futuro de boi gordo (BGI).</p>
+      <div class="mt-4 grid gap-6 lg:grid-cols-12">
+        <div class="lg:col-span-6 min-w-0 overflow-x-auto">
+          <table class="tbl">
+            <thead><tr><th>Contrato</th><th>Vencimento</th><th class="num">Ajuste (R$/@)</th><th class="num">Basis (R$/@)</th><th class="num">Basis (%)</th></tr></thead>
+            <tbody id="b3-table"></tbody>
+          </table>
+          <p class="small mt-3 text-[var(--ink-2)]" id="b3-reading"></p>
+          <p class="small muted mt-1" id="b3-note"></p>
+        </div>
+        <div class="lg:col-span-6">
+          <p class="small muted">Basis do 1º vencimento, últimos 60 dias</p>
+          <div class="mt-2 h-[220px]"><canvas id="chart-basis" aria-label="Histórico do basis"></canvas></div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Simulador -->
-  <section class="mt-14 grid gap-6 lg:grid-cols-12" aria-labelledby="sim-title">
-    <form class="glass lg:col-span-7 p-6" id="sim-form" novalidate>
-      <h2 id="sim-title" class="h2">Segurar ou vender?</h2>
-      <p class="lede small mt-1">Compara vender o lote hoje com mantê-lo engordando mais alguns dias.</p>
-      <div class="mt-5 grid gap-4 sm:grid-cols-2">
-        <div><label class="label" for="sim-peso">Peso vivo atual (kg)</label>
-          <input class="field" id="sim-peso" name="peso_atual_kg" type="number" inputmode="decimal" value="480" min="150" max="900" step="1" required></div>
-        <div><label class="label" for="sim-gmd">Ganho médio diário (kg/dia)</label>
-          <input class="field" id="sim-gmd" name="gmd_kg" type="number" inputmode="decimal" value="0.9" min="0" max="2.5" step="0.05" required></div>
-        <div><label class="label" for="sim-dias">Dias a mais</label>
-          <input class="field" id="sim-dias" name="dias" type="number" inputmode="numeric" value="45" min="1" max="365" step="1" required></div>
-        <div><label class="label" for="sim-custo">Custo diário por cabeça (R$)</label>
-          <input class="field" id="sim-custo" name="custo_diario" type="number" inputmode="decimal" value="12" min="0" max="100" step="0.5" required></div>
-        <div class="sm:col-span-2"><label class="label" for="sim-venda">Preço da @ na venda (R$) <span class="muted">(vazio: projeta pela B3 + basis)</span></label>
-          <input class="field" id="sim-venda" name="preco_arroba_venda" type="number" inputmode="decimal" min="100" max="700" step="0.5" placeholder="Projeção automática"></div>
-      </div>
-      <details class="mt-4">
-        <summary class="small cursor-pointer text-[var(--eucalipto-escuro)]">Rendimento de carcaça e juros</summary>
-        <div class="mt-3 grid gap-4 sm:grid-cols-3">
-          <div><label class="label" for="sim-r1">Rendimento hoje (%)</label>
-            <input class="field" id="sim-r1" name="rendimento_atual" type="number" value="52" min="40" max="65" step="0.5"></div>
-          <div><label class="label" for="sim-r2">Rendimento na venda (%)</label>
-            <input class="field" id="sim-r2" name="rendimento_final" type="number" value="54" min="40" max="65" step="0.5"></div>
-          <div><label class="label" for="sim-juros">Juros ao mês (%)</label>
-            <input class="field" id="sim-juros" name="juros_mensal_pct" type="number" value="1" min="0" max="10" step="0.1"></div>
+  <section class="mt-4 grid gap-4 lg:grid-cols-12" aria-labelledby="sim-title" id="simulador">
+    <form class="card lg:col-span-7" id="sim-form" novalidate>
+      <div class="card-head"><h2 class="card-title" id="sim-title">{{ icon('calc') }}Segurar ou vender?</h2></div>
+      <div class="card-body">
+        <p class="small muted">Compara vender o lote hoje com mantê-lo engordando mais alguns dias.</p>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+          <div><label class="label" for="sim-peso">Peso vivo atual (kg)</label><input class="field" id="sim-peso" name="peso_atual_kg" type="number" inputmode="decimal" value="480" min="150" max="900" step="1" required></div>
+          <div><label class="label" for="sim-gmd">Ganho médio diário (kg/dia)</label><input class="field" id="sim-gmd" name="gmd_kg" type="number" inputmode="decimal" value="0.9" min="0" max="2.5" step="0.05" required></div>
+          <div><label class="label" for="sim-dias">Dias a mais</label><input class="field" id="sim-dias" name="dias" type="number" inputmode="numeric" value="45" min="1" max="365" step="1" required></div>
+          <div><label class="label" for="sim-custo">Custo diário por cabeça (R$)</label><input class="field" id="sim-custo" name="custo_diario" type="number" inputmode="decimal" value="12" min="0" max="100" step="0.5" required></div>
+          <div class="sm:col-span-2"><label class="label" for="sim-venda">Preço da @ na venda (R$) <span class="muted">(vazio: projeta pela B3 + basis)</span></label>
+            <input class="field" id="sim-venda" name="preco_arroba_venda" type="number" inputmode="decimal" min="100" max="700" step="0.5" placeholder="Projeção automática"></div>
         </div>
-      </details>
-      <div class="mt-5 flex items-center gap-3">
-        <button class="btn btn-primary" type="submit" id="sim-submit">Simular</button>
-        <p class="small text-[var(--queda)]" id="sim-error" role="alert"></p>
+        <details class="mt-4"><summary class="small cursor-pointer link">Rendimento de carcaça e juros</summary>
+          <div class="mt-3 grid gap-4 sm:grid-cols-3">
+            <div><label class="label" for="sim-r1">Rendimento hoje (%)</label><input class="field" id="sim-r1" name="rendimento_atual" type="number" value="52" min="40" max="65" step="0.5"></div>
+            <div><label class="label" for="sim-r2">Rendimento na venda (%)</label><input class="field" id="sim-r2" name="rendimento_final" type="number" value="54" min="40" max="65" step="0.5"></div>
+            <div><label class="label" for="sim-juros">Juros ao mês (%)</label><input class="field" id="sim-juros" name="juros_mensal_pct" type="number" value="1" min="0" max="10" step="0.1"></div>
+          </div>
+        </details>
+        <div class="mt-5 flex items-center gap-3"><button class="btn btn-primary" type="submit" id="sim-submit">Simular</button><p class="small text-[var(--queda)]" id="sim-error" role="alert"></p></div>
       </div>
     </form>
-
-    <div class="glass glass-strong lg:col-span-5 p-6" aria-live="polite" id="sim-result">
-      <h3 class="h3">Resultado</h3>
-      <p class="muted mt-2">Preencha os dados do lote e toque em Simular.</p>
+    <div class="card lg:col-span-5" aria-live="polite" id="sim-result">
+      <div class="card-head"><h3 class="card-title">Resultado</h3></div>
+      <div class="card-body"><p class="muted">Preencha os dados do lote e toque em Simular.</p></div>
     </div>
   </section>
 
-  <!-- Notícias -->
-  <section class="mt-14 glass p-6" aria-labelledby="news-title">
-    <div class="flex flex-wrap items-baseline justify-between gap-3">
-      <h2 id="news-title" class="h2">O que saiu nas últimas horas</h2>
-      <span class="small muted" id="news-count"></span>
+  <!-- Notícias completas -->
+  <section class="mt-4 card" aria-labelledby="news-title" id="noticias">
+    <div class="card-head"><h2 class="card-title" id="news-title">{{ icon('news') }}O que saiu nas últimas horas</h2><span class="small muted" id="news-count"></span></div>
+    <div class="card-body">
+      <form class="grid gap-3 sm:grid-cols-12" id="news-filters" role="search">
+        <div class="sm:col-span-5"><label class="sr-only" for="news-q">Buscar notícias</label><input class="field" id="news-q" type="search" placeholder="Buscar: frigorífico, China, chuva…"></div>
+        <div class="sm:col-span-3"><label class="sr-only" for="news-cat">Categoria</label>
+          <select class="field" id="news-cat"><option value="">Todas as categorias</option><option value="pecuaria_corte">Pecuária de corte</option><option value="mercado_externo">Mercado externo</option><option value="graos">Grãos e insumos</option><option value="clima">Clima</option><option value="sanidade">Sanidade</option><option value="politica_economia">Política e economia</option><option value="geral">Geral</option></select></div>
+        <div class="sm:col-span-2"><label class="sr-only" for="news-sent">Sentimento</label>
+          <select class="field" id="news-sent"><option value="">Qualquer tom</option><option value="positivo">Positivo</option><option value="neutro">Neutro</option><option value="negativo">Negativo</option></select></div>
+        <div class="sm:col-span-2"><label class="sr-only" for="news-scope">Abrangência</label>
+          <select class="field" id="news-scope"><option value="uf">Estado + Brasil</option><option value="">Todos os estados</option></select></div>
+      </form>
+      <ul class="mt-3" id="news-list"></ul>
+      <div class="mt-3"><button type="button" class="btn btn-ghost" id="news-more" hidden>Carregar mais</button></div>
     </div>
-    <form class="mt-4 grid gap-3 sm:grid-cols-12" id="news-filters" role="search">
-      <div class="sm:col-span-5"><label class="sr-only" for="news-q">Buscar notícias</label>
-        <input class="field" id="news-q" type="search" placeholder="Buscar: frigorífico, China, chuva…"></div>
-      <div class="sm:col-span-3"><label class="sr-only" for="news-cat">Categoria</label>
-        <select class="field" id="news-cat">
-          <option value="">Todas as categorias</option>
-          <option value="pecuaria_corte">Pecuária de corte</option>
-          <option value="mercado_externo">Mercado externo</option>
-          <option value="graos">Grãos e insumos</option>
-          <option value="clima">Clima</option>
-          <option value="sanidade">Sanidade</option>
-          <option value="politica_economia">Política e economia</option>
-          <option value="geral">Geral</option>
-        </select></div>
-      <div class="sm:col-span-2"><label class="sr-only" for="news-sent">Sentimento</label>
-        <select class="field" id="news-sent">
-          <option value="">Qualquer tom</option>
-          <option value="positivo">Positivo</option>
-          <option value="neutro">Neutro</option>
-          <option value="negativo">Negativo</option>
-        </select></div>
-      <div class="sm:col-span-2"><label class="sr-only" for="news-scope">Abrangência</label>
-        <select class="field" id="news-scope">
-          <option value="uf">Estado + Brasil</option>
-          <option value="">Todos os estados</option>
-        </select></div>
-    </form>
-    <ul class="mt-4" id="news-list"></ul>
-    <div class="mt-4"><button type="button" class="btn btn-ghost" id="news-more" hidden>Carregar mais</button></div>
   </section>
+</div>
+
+<!-- Barra flutuante -->
+<nav class="dock" aria-label="Seções">
+  <a href="#inicio" class="active" data-sec="inicio">{{ icon('home') }}<span class="lbl">Início</span></a>
+  <a href="#mercado" data-sec="mercado" title="Mercado">{{ icon('pulse') }}<span class="lbl">Mercado</span></a>
+  <a href="#mapa" data-sec="mapa" title="Mapa">{{ icon('map') }}<span class="lbl">Mapa</span></a>
+  <a href="#ciclo" data-sec="ciclo" title="Ciclo">{{ icon('cycle') }}<span class="lbl">Ciclo</span></a>
+  <a href="#clima" data-sec="clima" title="Clima">{{ icon('rain') }}<span class="lbl">Clima</span></a>
+  <a href="#b3" data-sec="b3" title="B3">{{ icon('candle') }}<span class="lbl">B3</span></a>
+  <a href="#simulador" data-sec="simulador" title="Simulador">{{ icon('calc') }}<span class="lbl">Simulador</span></a>
+  <a href="#noticias" data-sec="noticias" title="Notícias">{{ icon('news') }}<span class="lbl">Notícias</span></a>
+  <span class="sep" aria-hidden="true"></span>
+  <a href="/admin/" class="plus" title="Cadastrar cotação" aria-label="Cadastrar cotação no admin">{{ icon('plus') }}</a>
+</nav>
+
+<!-- Busca de praça (Ctrl K) -->
+<div class="palette-backdrop" id="palette" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Buscar praça">
+    <input id="palette-input" type="search" placeholder="Digite uma cidade ou estado…" autocomplete="off">
+    <ul id="palette-list"></ul>
+  </div>
 </div>
 {% endblock %}
 

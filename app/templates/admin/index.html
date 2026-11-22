@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Admin — AgroRadar{% endblock %}
+{% block topbar_class %}solid{% endblock %}
 
 {% block topbar %}
-  <a href="{{ url_for('web.index') }}" class="btn btn-ghost !py-1.5">Ver painel</a>
-  <button type="button" class="btn btn-ghost !py-1.5" id="logout" hidden>Sair</button>
+  <a href="{{ url_for('web.index') }}" class="pill-btn">Ver painel</a>
+  <button type="button" class="pill-btn" id="logout" hidden>Sair</button>
 {% endblock %}
 
 {% block content %}
