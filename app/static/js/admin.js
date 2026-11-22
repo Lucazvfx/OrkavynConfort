@@ -90,6 +90,28 @@
       ph("f-milho", t.items.milho && t.items.milho.price);
       ph("f-farelo", t.items.farelo_soja && t.items.farelo_soja.price);
     } catch (_) { /* praça sem dados: sem placeholder */ }
+    loadRecent();
+  }
+
+  async function loadRecent() {
+    const code = $("adm-praca").value;
+    const tbody = $("recent-rows");
+    try {
+      const { entries } = await api(`/admin/api/recent?praca=${encodeURIComponent(code)}`);
+      tbody.replaceChildren(...(entries.length ? entries.map((e) => el("tr", {},
+        el("td", { class: "whitespace-nowrap", text: fmt.date(e.date) }),
+        el("td", { text: e.what }),
+        el("td", { class: "num", text: e.unit === "dias úteis" ? `${fmt.num(e.value)} d` : e.unit.startsWith("R$") ? fmt.brl(e.value) : fmt.num(e.value, 2) }),
+        el("td", { class: "small muted", text: e.source }),
+        el("td", {}, el("button", { type: "button", class: "btn btn-ghost !py-1 !px-3 small", text: "Remover",
+          onclick: async () => {
+            if (!confirm(`Remover ${e.what} de ${fmt.date(e.date)} (${e.source})?`)) return;
+            try { await post("/admin/api/entries/delete", { kind: e.kind, id: e.id }); toast("Lançamento removido"); loadPanel(); }
+            catch (ex) { toast(`Erro: ${ex.message}`); }
+          } })))) : [el("tr", {}, el("td", { colspan: "5", class: "muted", text: "Nenhum lançamento para esta praça." }))]));
+    } catch (ex) {
+      tbody.replaceChildren(el("tr", {}, el("td", { colspan: "5", class: "muted", text: `Não foi possível carregar: ${ex.message}` })));
+    }
   }
 
   // ------------------------------------------------------------------ formulários por praça

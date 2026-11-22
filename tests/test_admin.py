@@ -111,3 +111,15 @@ def test_national_reference_when_praca_has_no_schedule(admin_client, session):
     assert k["schedule"]["days_ahead"] is None
     assert k["schedule"]["national_reference"]["days_ahead"] == 5.77
     assert "BR_MEDIA" not in [p["code"] for s in admin_client.get("/api/pracas").json["states"] for p in s["pracas"]]
+
+
+def test_recent_and_delete_entry(admin_client, session):
+    r = admin_client.get("/admin/api/recent?praca=RO_VILHENA")
+    assert r.status_code == 200 and r.json["entries"]
+    e = next(x for x in r.json["entries"] if x["kind"] == "cattle")
+    assert post(admin_client, "/admin/api/entries/delete", {"kind": "cattle", "id": e["id"]}).status_code == 200
+    assert session.get(CattleQuote, e["id"]) is None
+    assert post(admin_client, "/admin/api/entries/delete", {"kind": "cattle", "id": e["id"]}).status_code == 404
+    assert post(admin_client, "/admin/api/entries/delete", {"kind": "x", "id": 1}).status_code == 422
+    # exige CSRF
+    assert admin_client.post("/admin/api/entries/delete", json={"kind": "cattle", "id": 1}).status_code == 403

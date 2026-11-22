@@ -389,6 +389,54 @@ def toggle_praca(code):
 
 
 # ---------------------------------------------------------------------------
+# Lançamentos recentes e remoção (corrigir erro de digitação ou dado de fonte errada)
+# ---------------------------------------------------------------------------
+_KINDS = {"cattle": CattleQuote, "input": InputQuote, "schedule": SlaughterSchedule}
+
+
+@bp.get("/api/recent")
+@admin_required
+def recent_entries():
+    """Últimos lançamentos da praça (todas as fontes), para conferir e remover."""
+    praca = _get_praca(request.args.get("praca"))
+    out = []
+    for q in db.session.scalars(select(CattleQuote).where(CattleQuote.praca_id == praca.id)
+                                .order_by(CattleQuote.quote_date.desc(), CattleQuote.category).limit(12)):
+        out.append({"kind": "cattle", "id": q.id, "date": q.quote_date.isoformat(),
+                    "what": CattleCategory.LABELS.get(q.category, q.category), "value": q.price,
+                    "unit": "R$/@", "source": q.source})
+    for s in db.session.scalars(select(SlaughterSchedule).where(SlaughterSchedule.praca_id == praca.id)
+                                .order_by(SlaughterSchedule.ref_date.desc()).limit(6)):
+        out.append({"kind": "schedule", "id": s.id, "date": s.ref_date.isoformat(), "what": "Escala",
+                    "value": s.days_ahead, "unit": "dias úteis", "source": s.source})
+    for i in db.session.scalars(select(InputQuote).where(InputQuote.praca_id == praca.id)
+                                .order_by(InputQuote.quote_date.desc()).limit(6)):
+        out.append({"kind": "input", "id": i.id, "date": i.quote_date.isoformat(), "what": i.item.replace("_", " ").capitalize(),
+                    "value": i.price, "unit": i.unit, "source": i.source})
+    out.sort(key=lambda r: r["date"], reverse=True)
+    return jsonify(praca=praca.code, entries=out)
+
+
+@bp.post("/api/entries/delete")
+@admin_required
+def delete_entry():
+    """{kind: cattle|input|schedule, id} — remove um lançamento."""
+    data = _payload()
+    model = _KINDS.get(str(data.get("kind")))
+    if model is None:
+        raise AdminError("Tipo inválido (cattle, input ou schedule)", 422)
+    try:
+        row = db.session.get(model, int(data.get("id")))
+    except (TypeError, ValueError):
+        row = None
+    if row is None:
+        raise AdminError("Lançamento não encontrado", 404)
+    db.session.delete(row)
+    db.session.commit()
+    return jsonify(ok=True, removed={"kind": data.get("kind"), "id": int(data.get("id"))})
+
+
+# ---------------------------------------------------------------------------
 # Jobs manuais
 # ---------------------------------------------------------------------------
 @bp.post("/api/jobs/<name>/run")
